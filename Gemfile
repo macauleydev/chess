@@ -6,3 +6,6 @@ source "https://rubygems.org"
 
 gem "rubocop", "~> 1.60"
 gem "rubocop-rspec", "~> 2.26"
+
+
+gem "paint", "~> 2.3"

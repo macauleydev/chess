@@ -1,35 +1,61 @@
+require 'paint'
+require_relative 'piece'
+require_relative 'player'
+
 class Board
-  def to_s
-    rows = Array.new(8, content_row)
-    inside = rows.join(middle_border_row)
-    top_border_row + inside + bottom_border_row
+  def initialize(players = [Player.new(White), Player.new(Black)], places = initial_places)
+    @players = players
+    @places = places
   end
 
-  def content_row
-    border = '│'
-    space = '   '
-    row(border, space, border, border)
+  def initial_places # rubocop:disable Metrics/MethodLength
+    places = {}
+    [White, Black].each do |color|
+      first_row_index = color.first_row
+      first_row_pieces = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
+      first_row_pieces.each_with_index do |piece, column_index|
+        place = [column_index, first_row_index]
+        places[place] = piece.new(color, [place])
+      end
+
+      second_row_index = color.first_row + color.direction
+      (0..7).each do |column_index|
+        place = [column_index, second_row_index]
+        places[place] = Pawn.new(color, [place])
+      end
+    end
+    places
   end
 
-  def top_border_row(start: '┌', cross: '┬', ending: '┐')
-    border_row(start:, cross:, ending:)
+  def to_s # rubocop:disable Metrics/MethodLength,Metrics/AbcSize
+    column_labels = ('a'..'h').to_a.join(' ')
+    row_of_column_labels = Paint["  #{column_labels}\n", color_label]
+    board_rows = ''
+    7.downto(0) do |row_index|
+      row_label = Paint[(row_index + 1).to_s, color_label]
+      squares = ''
+      0.upto(7) do |column_index|
+        place = [column_index, row_index]
+        piece = @places[place]
+        symbol = piece&.symbol || ' '
+        fg = piece&.color&.color_code
+        bg = (row_index + column_index).odd? ? bg_light : bg_dark
+        squares << Paint["#{symbol} ", fg, bg]
+      end
+      board_rows << "#{row_label} #{squares} #{row_label}\n"
+    end
+    row_of_column_labels + board_rows + row_of_column_labels
   end
 
-  def middle_border_row
-    border_row
+  def bg_dark
+    '#9f6122'
   end
 
-  def bottom_border_row(start: '└', cross: '┴', ending: '┘')
-    border_row(start:, cross:, ending:)
+  def bg_light
+    '#e8a869'
   end
 
-  def border_row(start: '├', line: '───', cross: '┼', ending: '┤')
-    row(start, line, cross, ending)
-  end
-
-  def row(left_border, cell, inner_border, right_border)
-    cells = Array.new(8, cell)
-    inside = cells.join(inner_border)
-    left_border + inside + right_border + "\n"
+  def color_label
+    '#777777'
   end
 end
