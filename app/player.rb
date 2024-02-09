@@ -1,7 +1,7 @@
 require_relative 'piece'
 require_relative 'color'
 
-class Player
+class Player # rubocop:disable Style/Documentation
   def initialize(color)
     @color = color
     @name = color.name
@@ -9,4 +9,5 @@ class Player
     @color_code = color.color_code
     # @pieces = initial_pieces
   end
+  attr_reader :name, :color
 end

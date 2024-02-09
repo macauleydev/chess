@@ -1,4 +1,9 @@
 require_relative 'board'
+require_relative 'color'
+require_relative 'game'
+require_relative 'move'
+require_relative 'piece'
+require_relative 'player'
 
-board = Board.new
-puts board
+game = Game.new
+game.play

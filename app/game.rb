@@ -4,13 +4,21 @@ require_relative 'move'
 require_relative 'piece'
 require_relative 'player'
 
-class Game
-  def initialize(board, moves)
+class Game # rubocop:disable Style/Documentation
+  def initialize(board = Board.new)
     @board = board
-    @moves = moves
   end
 
-  def players
-    @board.players
+  def play # rubocop:disable Metrics/AbcSize
+    loop do
+      puts @board
+      print(prompt = "#{@board.player.name} moves from: ")
+      from = gets.chomp
+      print 'to: '.rjust(prompt.length)
+      to = gets.chomp
+      puts "#{@board.player.name} attempting move from #{from} to #{to}..."
+      @board.move_piece(from, to)
+      @board.rotate_players
+    end
   end
 end

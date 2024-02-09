@@ -1,73 +1,69 @@
 require_relative 'color'
 
-class Piece
-  def initialize(color, places)
+class Piece # rubocop:disable Style/Documentation
+  def initialize(color, squares_visited)
     @color = color
-    @places = places
-    @place = places.last
+    @squares_visited = squares_visited
+    @square = squares_visited.last
   end
 
   def unmoved?
-    @places.length = 1
+    @squares_visited.length = 1
   end
+
+  attr_reader :color, :squares_visited, :square, :name, :key, :symbol, :initial_files, :initial_rank_offset
 end
 
-class Pawn < Piece
-  def initialize(color, places)
+class Pawn < Piece # rubocop:disable Style/Documentation
+  def initialize(color, squares_visited)
     super
     @name = 'pawn'
     @key = 'P'
     @symbol = '♟'
   end
-  attr_reader :color, :places, :name, :key, :symbol
 end
 
-class Rook < Piece
-  def initialize(color, places)
+class Rook < Piece # rubocop:disable Style/Documentation
+  def initialize(color, squares_visited)
     super
     @name = 'rook'
     @key = 'R'
     @symbol = '♜'
   end
-  attr_reader :color, :places, :name, :key, :symbol
 end
 
-class Bishop < Piece
-  def initialize(color, places)
-    super
-    @name = 'bishop'
-    @key = 'B'
-    @symbol = '♝'
-  end
-  attr_reader :color, :places, :name, :key, :symbol
-end
-
-class Knight < Piece
-  def initialize(color, places)
+class Knight < Piece # rubocop:disable Style/Documentation
+  def initialize(color, squares_visited)
     super
     @name = 'knight'
     @key = 'N'
     @symbol = '♞'
   end
-  attr_reader :color, :places, :name, :key, :symbol
 end
 
-class Queen < Piece
-  def initialize(color, places)
+class Bishop < Piece # rubocop:disable Style/Documentation
+  def initialize(color, squares_visited)
     super
-    @name = 'queen'
-    @key = 'Q'
-    @symbol = '♛'
+    @name = 'bishop'
+    @key = 'B'
+    @symbol = '♝'
   end
-  attr_reader :color, :places, :name, :key, :symbol
 end
 
-class King < Piece
-  def initialize(color, places)
+class King < Piece # rubocop:disable Style/Documentation
+  def initialize(color, squares_visited)
     super
     @name = 'king'
     @key = 'K'
     @symbol = '♚'
   end
-  attr_reader :color, :places, :name, :key, :symbol
+end
+
+class Queen < Piece # rubocop:disable Style/Documentation
+  def initialize(color, squares_visited)
+    super
+    @name = 'queen'
+    @key = 'Q'
+    @symbol = '♛'
+  end
 end
