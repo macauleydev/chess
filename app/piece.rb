@@ -8,10 +8,14 @@ class Piece # rubocop:disable Style/Documentation
   end
 
   def unmoved?
-    @squares_visited.length = 1
+    @squares_visited.length == 1
   end
 
-  attr_reader :color, :squares_visited, :square, :name, :key, :symbol, :initial_files, :initial_rank_offset
+  def square=(square_name)
+    @squares_visited << square_name unless square_name == @square
+  end
+
+  attr_reader :color, :square, :name, :key, :symbol
 end
 
 class Pawn < Piece # rubocop:disable Style/Documentation

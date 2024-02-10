@@ -4,11 +4,9 @@ require_relative 'piece'
 require_relative 'player'
 
 class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
-  FILE_NAMES = ('a'..'h')
+  FILE_LETTERS = ('a'..'h')
+  RANK_NUMBERS = (1..8)
   RANK_NAMES = ('1'..'8')
-
-  COLUMNS = (0..7)
-  ROWS = (0..7)
 
   PIECE_TYPES = Piece.subclasses
   INITIAL_FILES = {
@@ -25,8 +23,6 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     @squares = squares
     @moves = moves
 
-    @file_labels = FILE_NAMES.to_a
-    @row_labels = RANK_NAMES.to_a
     @label_rank_left = true
     @label_rank_right = false
     @label_file_above = false
@@ -63,7 +59,11 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def a_square?(square_name)
-    square_name.chars in [FILE_NAMES, RANK_NAMES]
+    square_name.chars in [FILE_LETTERS, RANK_NAMES]
+  end
+
+  def squares?(*square_names)
+    square_names.all? { |square_name| a_square?(square_name) }
   end
 
   def available?(square_name)
@@ -78,6 +78,26 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     @squares.select { |_square_name, piece| piece.color == Black }
   end
 
+  def file_letter(square_name)
+    square_name[0] if a_square?(square_name)
+  end
+
+  def rank_name(square_name)
+    square_name[1] if a_square?(square_name)
+  end
+
+  def rank_number(square_name)
+    rank_name(square_name).to_i
+  end
+
+  def file_index(square_name)
+    FILE_LETTERS.find_index(file_letter(square_name))
+  end
+
+  def rank_index(square_name)
+    RANK_NAMES.find_index(rank_name(square_name))
+  end
+
   def to_s
     board_rows = RANK_NAMES.reverse_each.reduce('') do |partial_board, rank_name|
       partial_board + rank_to_s(rank_name)
@@ -88,7 +108,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def rank_to_s(rank_name)
-    board_row = FILE_NAMES.map { |file_name| square_to_s("#{file_name}#{rank_name}") }.join
+    board_row = FILE_LETTERS.map { |file_name| square_to_s("#{file_name}#{rank_name}") }.join
     left = @label_rank_left ? "#{label_format(rank_name)} " : ''
     right = @label_rank_right ? " #{label_format(rank_name)}" : ''
     "#{left}#{board_row}#{right}\n"
@@ -97,7 +117,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   def square_to_s(square_name)
     return 'Invalid input' unless a_square?(square_name)
 
-    file_index = FILE_NAMES.find_index(square_name[0])
+    file_index = FILE_LETTERS.find_index(square_name[0])
     rank_index = RANK_NAMES.find_index(square_name[1])
     bg = (file_index + rank_index).even? ? bg_dark : bg_light
     piece = @squares[square_name]
@@ -109,7 +129,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   def file_labels_row
     left = @label_rank_left ? '  ' : ''
     right = @label_rank_right ? '  ' : ''
-    labels = "#{label_format(FILE_NAMES.to_a.join(' '))} "
+    labels = "#{label_format(FILE_LETTERS.to_a.join(' '))} "
     "#{left}#{labels}#{right}\n"
   end
 
