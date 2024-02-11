@@ -27,7 +27,7 @@ class Game # rubocop:disable Style/Documentation
           puts 'Try again.'
         end
         if @board.valid_move?(from, to)
-          @board.move_piece(from, to)
+          @board.make_move(from, to)
           break
         else
           puts 'Try again.'

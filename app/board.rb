@@ -17,11 +17,12 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   INITIAL_RANK_OFFSET = { Rook => 0, Knight => 0, Bishop => 0, Queen => 0, King => 0, Pawn => 1 }.freeze
 
   include Move
-  def initialize(players = [Player.new(White), Player.new(Black)],
-                 squares = initial_squares(players), moves = [])
+  def initialize(players = [Player.new(White), Player.new(Black)], # rubocop:disable Metrics/ParameterLists
+                 squares = initial_squares(players), moves = [], captures = [])
     @players = players
     @squares = squares
     @moves = moves
+    @captures = captures
 
     @label_rank_left = true
     @label_rank_right = false
@@ -30,6 +31,10 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
   attr_accessor :squares, :moves
   attr_reader :players
+
+  def last_moving_piece
+    @moves&.last&.[](:piece_type)
+  end
 
   def player
     players[0]
@@ -54,8 +59,17 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     squares
   end
 
-  def square(square_name)
-    @squares[square_name] if a_square?(square_name)
+  def square(square_name, file_shift: 0, rank_increase: 0)
+    adjusted_file = FILE_LETTERS.to_a[file_index(square_name) + file_shift]
+    adjusted_rank = rank_number(square_name) + rank_increase
+    adjusted_square_name = "#{adjusted_file}#{adjusted_rank}"
+    @squares[adjusted_square_name] if a_square?(adjusted_square_name)
+  end
+
+  def square_name(file_index, rank_index)
+    file_letter = FILE_LETTERS.to_a[file_index]
+    rank_number = RANK_NUMBERS.to_a[rank_index]
+    "#{file_letter}#{rank_number}"
   end
 
   def a_square?(square_name)
@@ -67,7 +81,16 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def available?(square_name)
-    square(square_name).nil?
+    square(square_name).nil? && a_square?(square_name)
+  end
+
+  def occupied?(square_name)
+    !square(square_name).nil?
+  end
+
+  def capture(square_name)
+    @captures << square(square_name)
+    squares[square_name] = nil
   end
 
   def white_pieces
@@ -94,8 +117,8 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     FILE_LETTERS.find_index(file_letter(square_name))
   end
 
-  def rank_index(square_name)
-    RANK_NAMES.find_index(rank_name(square_name))
+  def rank_index(square_name, increase: 0, color: square(square_name).color)
+    RANK_NAMES.find_index(rank_name(square_name)) + (increase * color.direction)
   end
 
   def to_s
