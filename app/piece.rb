@@ -15,7 +15,7 @@ class Piece # rubocop:disable Style/Documentation
     @squares_visited << square_name unless square_name == @square
   end
 
-  attr_reader :color, :square, :name, :key, :symbol
+  attr_reader :color, :squares_visited, :square, :name, :key, :symbol
 end
 
 class Pawn < Piece # rubocop:disable Style/Documentation

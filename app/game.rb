@@ -18,7 +18,7 @@ class Game # rubocop:disable Style/Documentation
         loop do
           print(prompt = "#{@board.player.name} moves...from: ")
           from = gets.chomp
-          next unless @board.square(from)&.color == @board.player.color
+          next unless @board.piece_at(from)&.color == @board.player.color
 
           print 'to: '.rjust(prompt.length)
           to = gets.chomp

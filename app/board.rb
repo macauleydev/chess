@@ -32,10 +32,6 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   attr_accessor :squares, :moves
   attr_reader :players
 
-  def last_moving_piece
-    @moves&.last&.[](:piece_type)
-  end
-
   def player
     players[0]
   end
@@ -59,11 +55,19 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     squares
   end
 
-  def square(square_name, file_shift: 0, rank_increase: 0)
-    adjusted_file = FILE_LETTERS.to_a[file_index(square_name) + file_shift]
-    adjusted_rank = rank_number(square_name) + rank_increase
-    adjusted_square_name = "#{adjusted_file}#{adjusted_rank}"
+  def piece_at(square_name, file_shift: 0, rank_increase: 0)
+    if file_shift.zero? && rank_increase.zero?
+      adjusted_square_name = square_name
+    else
+      adjusted_file = FILE_LETTERS.to_a[file_index(square_name) + file_shift]
+      adjusted_rank = rank_number(square_name) + rank_increase
+      adjusted_square_name = "#{adjusted_file}#{adjusted_rank}"
+    end
     @squares[adjusted_square_name] if a_square?(adjusted_square_name)
+  end
+
+  def color_at(square_name)
+    piece_at(square_name)&.color
   end
 
   def square_name(file_index, rank_index)
@@ -80,17 +84,16 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     square_names.all? { |square_name| a_square?(square_name) }
   end
 
-  def available?(square_name)
-    square(square_name).nil? && a_square?(square_name)
+  def empty_square?(square_name)
+    piece_at(square_name).nil? && a_square?(square_name)
   end
 
   def occupied?(square_name)
-    !square(square_name).nil?
+    !piece_at(square_name).nil?
   end
 
-  def capture(square_name)
-    @captures << square(square_name)
-    squares[square_name] = nil
+  def piece_type_at(square_name)
+    piece_at(square_name)&.class
   end
 
   def white_pieces
@@ -117,7 +120,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     FILE_LETTERS.find_index(file_letter(square_name))
   end
 
-  def rank_index(square_name, increase: 0, color: square(square_name).color)
+  def rank_index(square_name, increase: 0, color: piece_at(square_name).color)
     RANK_NAMES.find_index(rank_name(square_name)) + (increase * color.direction)
   end
 
