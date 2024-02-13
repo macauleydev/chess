@@ -120,35 +120,50 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     FILE_LETTERS.find_index(file_letter(square_name))
   end
 
-  def rank_index(square_name, increase: 0, color: piece_at(square_name).color)
+  def rank_index(square_name, increase: 0, color: piece_at(square_name)&.color || White)
     RANK_NAMES.find_index(rank_name(square_name)) + (increase * color.direction)
   end
 
-  def to_s
+  def to_s(active_squares: nil)
     board_rows = RANK_NAMES.reverse_each.reduce('') do |partial_board, rank_name|
-      partial_board + rank_to_s(rank_name)
+      partial_board + rank_to_s(rank_name, active_squares:)
     end
     above = @label_file_above ? file_labels_row : ''
     below = @label_file_below ? file_labels_row : ''
     above + board_rows + below
   end
 
-  def rank_to_s(rank_name)
-    board_row = FILE_LETTERS.map { |file_name| square_to_s("#{file_name}#{rank_name}") }.join
+  def rank_to_s(rank_name, active_squares: nil)
+    board_row = FILE_LETTERS.map do |file_name|
+      square_name = "#{file_name}#{rank_name}"
+      active = active_squares&.include?(square_name)
+      square_to_s("#{file_name}#{rank_name}", active:)
+    end.join
     left = @label_rank_left ? "#{label_format(rank_name)} " : ''
     right = @label_rank_right ? " #{label_format(rank_name)}" : ''
     "#{left}#{board_row}#{right}\n"
   end
 
-  def square_to_s(square_name)
+  def square_to_s(square_name, active: nil) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize
     return 'Invalid input' unless a_square?(square_name)
 
-    file_index = FILE_LETTERS.find_index(square_name[0])
-    rank_index = RANK_NAMES.find_index(square_name[1])
-    bg = (file_index + rank_index).even? ? bg_dark : bg_light
-    piece = @squares[square_name]
-    fg = piece&.color&.color_code
-    symbol = piece&.symbol || ' '
+    dark = (file_index(square_name) + rank_index(square_name)).even?
+
+    bg = case [dark, active]
+         in [true, nil|false] then bg_dark
+         in [true, true] then bg_dark_active
+         in [false, nil|false] then bg_light
+         in [false, true] then bg_light_active
+         else puts "Failed pattern matching. dark = #{dark}, active = #{active}."
+         end
+    # bg = bg_dark_active if square_name == 'd2'
+    # bg = bg_light_active if square_name == 'd7'
+    piece = piece_at(square_name)
+    fg, symbol = if occupied?(square_name)
+                   [piece.color.color_code, piece.symbol]
+                 else
+                   [nil, ' ']
+                 end
     Paint["#{symbol} ", fg, bg]
   end
 
@@ -164,11 +179,19 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def bg_dark
-    '#9f6122'
+    '#cc7c2b'
   end
 
   def bg_light
     '#e8a869'
+  end
+
+  def bg_dark_active
+    '#a09512'
+  end
+
+  def bg_light_active
+    '#c3bb62'
   end
 
   def fg_label
