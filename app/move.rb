@@ -41,7 +41,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     @captures << piece_at(captured_square)
   end
 
-  def valid_move?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/AbcSize
+  def valid_move?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/AbcSize,Metrics/PerceivedComplexity
     # assumed: both squares are on the board; from_square is correct color
     piece = piece_at(from_square)
     return false if to_square == from_square
@@ -56,23 +56,37 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
         steps = rank_would_grow(from_square, to_square)
         allowed_steps = [1]
         allowed_steps << 2 if piece.unmoved?
-        allowed_steps.include?(steps)
+        allowed_steps.include?(steps) &&
+          all_empty?(*squares_between(from_square, to_square))
       else false
       end
     in Bishop
-      file_shift(from_square, to_square).abs == rank_would_grow(from_square, to_square)
+      diagonal?(from_square, to_square) &&
+        all_empty?(*squares_between(from_square, to_square))
+    in Rook
+      straight?(from_square, to_square) &&
+        all_empty?(*squares_between(from_square, to_square))
+    in Queen
+      (straight?(from_square, to_square) || diagonal?(from_square, to_square)) &&
+        all_empty?(*squares_between(from_square, to_square))
     else
       false
     end
   end
 
-  def valid_attack?(from_square, to_square)
-    moving_piece = piece_at(from_square)
-    case moving_piece
+  def valid_attack?(from_square, to_square) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
+    case piece_at(from_square)
     in Pawn
       file_shift(from_square, to_square).abs == 1 && rank_would_grow(from_square, to_square) == 1
     in Bishop
-      file_shift(from_square, to_square).abs == rank_would_grow(from_square, to_square)
+      diagonal?(from_square, to_square) &&
+        all_empty?(*squares_between(from_square, to_square))
+    in Rook
+      straight?(from_square, to_square) &&
+        all_empty?(*squares_between(from_square, to_square))
+    in Queen
+      (straight?(from_square, to_square) || diagonal?(from_square, to_square)) &&
+        all_empty?(*squares_between(from_square, to_square))
     else
       false
     end
@@ -107,6 +121,19 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
 
   def rank_grew(from_square, to_square)
     rank_growth(from_square, to_square, color: piece_at(to_square).color)
+  end
+
+  def file_rank_would_change(from_square, to_square)
+    [file_shift(from_square, to_square),
+     rank_would_grow(from_square, to_square)]
+  end
+
+  def diagonal?(from_square, to_square)
+    file_rank_would_change(from_square, to_square).map(&:abs) in [1..7 => _n, ^_n]
+  end
+
+  def straight?(from_square, to_square)
+    [file_shift(from_square, to_square), rank_would_grow(from_square, to_square)].one?(0)
   end
 
   private

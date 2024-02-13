@@ -80,12 +80,52 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     square_name.chars in [FILE_LETTERS, RANK_NAMES]
   end
 
-  def squares?(*square_names)
+  def all_squares?(*square_names)
     square_names.all? { |square_name| a_square?(square_name) }
+  end
+
+  def squares_between(from_square, to_square) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+    return unless all_squares?(from_square, to_square)
+
+    from_x, from_y = file_rank_index(from_square)
+    to_x, to_y = file_rank_index(to_square)
+    delta_x = to_x - from_x
+    delta_y = to_y - from_y
+    return unless [delta_x.abs, delta_y.abs] in [2..7, 0] | [0, 2..7] | [2..7 => _steps, ^_steps]
+
+    steps = [delta_x.abs, delta_y.abs].max
+    x_step = delta_x / steps
+    y_step = delta_y / steps
+    (1...steps).map do |i|
+      square_name(from_x + (i * x_step), from_y + (i * y_step))
+    end
+  end
+
+  def squares_diagonal_from(square_name) # rubocop:disable Metrics/MethodLength
+    return unless a_square?(square_name)
+
+    from_x, from_y = file_rank_index(square_name)
+    directions = [1, -1].product([1, -1])
+    squares = []
+    directions.each do |x_step, y_step|
+      x = from_x
+      y = from_y
+      while [x + x_step, y + y_step] in [0..7, 0..7]
+        x += x_step
+        y += y_step
+        squares << square_name(x, y)
+      end
+    end
+    p squares
+    squares
   end
 
   def empty_square?(square_name)
     piece_at(square_name).nil? && a_square?(square_name)
+  end
+
+  def all_empty?(*square_names)
+    square_names.all? { |square_name| empty_square?(square_name) }
   end
 
   def occupied?(square_name)
@@ -122,6 +162,10 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
 
   def rank_index(square_name, increase: 0, color: piece_at(square_name)&.color || White)
     RANK_NAMES.find_index(rank_name(square_name)) + (increase * color.direction)
+  end
+
+  def file_rank_index(square_name)
+    [file_index(square_name), rank_index(square_name)]
   end
 
   def to_s(active_squares: nil)
