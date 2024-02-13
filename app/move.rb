@@ -1,5 +1,5 @@
 require_relative 'board'
-module Move # rubocop:disable Style/Documentation
+module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   def make_move(from_square, to_square)
     # assumed: move is valid
     captured_square = if occupied?(to_square)
@@ -41,9 +41,10 @@ module Move # rubocop:disable Style/Documentation
     @captures << piece_at(captured_square)
   end
 
-  def valid_move?(from_square, to_square) # rubocop:disable Metrics/MethodLength
+  def valid_move?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/AbcSize
     # assumed: both squares are on the board; from_square is correct color
     piece = piece_at(from_square)
+    return false if to_square == from_square
     return valid_attack?(from_square, to_square) unless empty_square?(to_square)
 
     case piece
@@ -58,6 +59,20 @@ module Move # rubocop:disable Style/Documentation
         allowed_steps.include?(steps)
       else false
       end
+    in Bishop
+      file_shift(from_square, to_square).abs == rank_would_grow(from_square, to_square)
+    else
+      false
+    end
+  end
+
+  def valid_attack?(from_square, to_square)
+    moving_piece = piece_at(from_square)
+    case moving_piece
+    in Pawn
+      file_shift(from_square, to_square).abs == 1 && rank_would_grow(from_square, to_square) == 1
+    in Bishop
+      file_shift(from_square, to_square).abs == rank_would_grow(from_square, to_square)
     else
       false
     end
@@ -84,16 +99,6 @@ module Move # rubocop:disable Style/Documentation
 
     puts "Invalid En Passant because #{invalid_reason}"
     false
-  end
-
-  def valid_attack?(from_square, to_square)
-    moving_piece = piece_at(from_square)
-    case moving_piece
-    in Pawn
-      file_shift(from_square, to_square).abs == 1 && rank_would_grow(from_square, to_square) == 1
-    else
-      false
-    end
   end
 
   def rank_would_grow(from_square, to_square)
