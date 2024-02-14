@@ -17,14 +17,14 @@ class Game # rubocop:disable Style/Documentation
         show_board
         print(prompt = "#{@board.player.name} moves from: ")
         from = gets.chomp
-        break if @board.piece_at(from)&.color == @board.player.color
+        break if @board.color_at(from) == @board.player.color && @board.valid_moves(from)&.count&.positive?
       end
       loop do
-        show_board(active_squares: [from])
+        show_board(active_squares: [from] + @board.valid_moves(from))
         print "#{@board.player.name} moves from #{from} to: "
         to = gets.chomp
 
-        next unless @board.a_square?(to) && @board.valid_move?(from, to)
+        next unless @board.square?(to) && @board.valid_move?(from, to)
 
         @board.make_move(from, to)
         show_board(active_squares: [from, to])

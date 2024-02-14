@@ -1,10 +1,17 @@
 require_relative 'board'
 module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
+  FILE_STEPS = [1, -1].product([0])
+  RANK_STEPS = [0].product([1, -1])
+  STRAIGHT_STEPS = FILE_STEPS + RANK_STEPS
+  DIAGONAL_STEPS = [1, -1].product([1, -1])
+  ALL_STEPS = STRAIGHT_STEPS + DIAGONAL_STEPS
+  KNIGHT_LEAPS = [1, -1].product([2, -2]) + [2, -2].product([1, -1])
+
   def make_move(from_square, to_square)
     # assumed: move is valid
     captured_square = if occupied?(to_square)
                         to_square
-                      elsif valid_en_passant?(from_square, to_square)
+                      elsif en_passant?(from_square, to_square)
                         square_name(file_index(to_square),
                                     rank_index(to_square,
                                                increase: -1, color: color_at(from_square)))
@@ -44,55 +51,63 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   def valid_move?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/AbcSize,Metrics/PerceivedComplexity
     # assumed: both squares are on the board; from_square is correct color
     piece = piece_at(from_square)
-    return false if to_square == from_square
+    return false if color_at(to_square) == color_at(from_square)
     return valid_attack?(from_square, to_square) unless empty_square?(to_square)
 
     case piece
-    in Pawn
+    when Pawn
       case file_shift(from_square, to_square).abs
       when 1
-        valid_en_passant?(from_square, to_square) if rank_would_grow(from_square, to_square) == 1
+        en_passant?(from_square, to_square) if rank_would_grow(from_square, to_square) == 1
       when 0
         steps = rank_would_grow(from_square, to_square)
         allowed_steps = [1]
         allowed_steps << 2 if piece.unmoved?
         allowed_steps.include?(steps) &&
-          all_empty?(*squares_between(from_square, to_square))
+          empty_between?(from_square, to_square)
       else false
       end
-    in Bishop
+    when Bishop
       diagonal?(from_square, to_square) &&
-        all_empty?(*squares_between(from_square, to_square))
-    in Rook
+        empty_between?(from_square, to_square)
+    when Rook
       straight?(from_square, to_square) &&
-        all_empty?(*squares_between(from_square, to_square))
-    in Queen
+        empty_between?(from_square, to_square)
+    when Queen
       (straight?(from_square, to_square) || diagonal?(from_square, to_square)) &&
-        all_empty?(*squares_between(from_square, to_square))
+        empty_between?(from_square, to_square)
+    when King
+      adjacent?(from_square, to_square)
+    when Knight
+      knight_leap?(from_square, to_square)
     else
       false
     end
   end
 
-  def valid_attack?(from_square, to_square) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
+  def valid_attack?(from_square, to_square) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength
     case piece_at(from_square)
-    in Pawn
+    when Pawn
       file_shift(from_square, to_square).abs == 1 && rank_would_grow(from_square, to_square) == 1
-    in Bishop
+    when Bishop
       diagonal?(from_square, to_square) &&
-        all_empty?(*squares_between(from_square, to_square))
-    in Rook
+        empty_between?(from_square, to_square)
+    when Rook
       straight?(from_square, to_square) &&
-        all_empty?(*squares_between(from_square, to_square))
-    in Queen
+        empty_between?(from_square, to_square)
+    when Queen
       (straight?(from_square, to_square) || diagonal?(from_square, to_square)) &&
-        all_empty?(*squares_between(from_square, to_square))
+        empty_between?(from_square, to_square)
+    when King
+      adjacent?(from_square, to_square)
+    when Knight
+      knight_leap?(from_square, to_square)
     else
       false
     end
   end
 
-  def valid_en_passant?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+  def en_passant?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     captured_square = square_name(file_index(to_square),
                                   rank_index(to_square,
                                              increase: -1, color: color_at(from_square)))
@@ -116,11 +131,11 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   end
 
   def rank_would_grow(from_square, to_square)
-    rank_growth(from_square, to_square, color: piece_at(from_square).color)
+    rank_growth(from_square, to_square, color: color_at(from_square))
   end
 
   def rank_grew(from_square, to_square)
-    rank_growth(from_square, to_square, color: piece_at(to_square).color)
+    rank_growth(from_square, to_square, color: color_at(to_square))
   end
 
   def file_rank_would_change(from_square, to_square)
@@ -136,10 +151,18 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     [file_shift(from_square, to_square), rank_would_grow(from_square, to_square)].one?(0)
   end
 
+  def adjacent?(from_square, to_square)
+    ALL_STEPS.include?(file_rank_would_change(from_square, to_square))
+  end
+
+  def knight_leap?(from_square, to_square)
+    KNIGHT_LEAPS.include?(file_rank_would_change(from_square, to_square))
+  end
+
   private
 
   def rank_growth(from_square, to_square, color: nil)
-    return unless a_square?(from_square) && a_square?(to_square)
+    return unless square?(from_square) && square?(to_square)
 
     direction = color ? color.direction : 1
     from_rank, to_rank = [from_square, to_square].map { rank_number(_1) }
@@ -147,7 +170,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   end
 
   def file_shift(from_square, to_square)
-    return unless a_square?(from_square) && a_square?(to_square)
+    return unless square?(from_square) && square?(to_square)
 
     from_file, to_file = [from_square, to_square].map { file_index(_1) }
     to_file - from_file
