@@ -8,6 +8,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   RANK_NUMBERS = (1..8)
   RANK_NAMES = ('1'..'8')
 
+  COLORS = [White, Black].freeze
   PIECE_TYPES = Piece.subclasses
   INITIAL_FILES = {
     Rook => %w[a h], Knight => %w[b g], Bishop => %w[c f],
@@ -18,9 +19,9 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
 
   include Move
   def initialize(players = [Player.new(White), Player.new(Black)], # rubocop:disable Metrics/ParameterLists
-                 squares = initial_squares(players), moves = [], captures = [])
+                 contents = initial_contents(players), moves = [], captures = [])
     @players = players
-    @squares = squares
+    @contents = contents
     @moves = moves
     @captures = captures
 
@@ -29,7 +30,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     @label_file_above = false
     @label_file_below = true
   end
-  attr_accessor :squares, :moves
+  attr_accessor :contents, :moves
   attr_reader :players
 
   def player
@@ -40,34 +41,47 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     players.rotate!
   end
 
-  def initial_squares(players) # rubocop:disable Metrics/MethodLength
-    squares = {}
+  def check?
+    in_check?(player.color)
+  end
+
+  def in_check?(color)
+    king_in_danger?(color)
+  end
+
+  def inverse(color)
+    raise 'Invalid color' unless COLORS.include?(color)
+
+    COLORS.find { _1 != color }
+  end
+
+  def king_in_danger?(color)
+    raise 'Invalid color' unless COLORS.include?(color)
+
+    opponents_squares = squares_of(color: inverse(color)).map { |square_name, _piece| square_name }
+    reachable = opponents_squares.inject([]) do |collection, from_square|
+      collection + squares_reachable_from(from_square)
+    end
+    reachable.any?(King)
+  end
+
+  def initial_contents(players) # rubocop:disable Metrics/MethodLength
+    contents = {}
     players.each do |player|
       color = player.color
       PIECE_TYPES.each do |piece_type|
         rank = color.lowest_rank + (color.direction * INITIAL_RANK_OFFSET[piece_type])
         INITIAL_FILES[piece_type].each do |file|
           square_name = "#{file}#{rank}"
-          squares[square_name] = piece_type.new(color, [square_name])
+          contents[square_name] = piece_type.new(color, [square_name])
         end
       end
     end
-    squares
+    contents
   end
 
-  def piece_at(square_name, file_shift: 0, rank_increase: 0)
-    if file_shift.zero? && rank_increase.zero?
-      adjusted_square_name = square_name
-    else
-      adjusted_file = FILE_LETTERS.to_a[file_index(square_name) + file_shift]
-      adjusted_rank = rank_number(square_name) + rank_increase
-      adjusted_square_name = "#{adjusted_file}#{adjusted_rank}"
-    end
-    @squares[adjusted_square_name] if square?(adjusted_square_name)
-  end
-
-  def color_at(square_name)
-    piece_at(square_name)&.color
+  def color_on(square_name)
+    @contents[square_name]&.color
   end
 
   def square_name(file_index, rank_index)
@@ -85,7 +99,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def squares_between(from_square, to_square) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
-    return unless all_square?(from_square, to_square)
+    raise 'Invalid square(s)' unless all_square?(from_square, to_square)
 
     from_x, from_y = file_rank_index(from_square)
     to_x, to_y = file_rank_index(to_square)
@@ -103,22 +117,6 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
 
   def squares_diagonal(from_square)
     squares_from(from_square, directions: DIAGONAL_STEPS, step_counts: (1..7))
-    # return unless square?(square_name)
-
-    # from_x, from_y = file_rank_index(square_name)
-    # directions = [1, -1].product([1, -1])
-    # squares = []
-    # directions.each do |x_step, y_step|
-    #   x = from_x
-    #   y = from_y
-    #   while [x + x_step, y + y_step] in [0..7, 0..7]
-    #     x += x_step
-    #     y += y_step
-    #     squares << square_name(x, y)
-    #   end
-    # end
-    # p squares
-    # squares
   end
 
   def squares_straight(from_square)
@@ -145,8 +143,8 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     squares_from(from_square, directions: KNIGHT_LEAPS, step_counts: (1..1))
   end
 
-  def squares_from(square_name, directions: nil, step_counts: (1..7)) # rubocop:disable Metrics/MethodLength
-    return unless square?(square_name)
+  def squares_from(square_name, directions: nil, step_counts: (1..7))
+    raise 'Invalid square' unless square?(square_name)
 
     x, y = file_rank_index(square_name)
     squares = []
@@ -156,80 +154,96 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
         squares << square_name(*new_xy) if new_xy in [0..7, 0..7]
       end
     end
-    p squares
     squares
   end
 
-  def valid_moves(from_square) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-    piece = piece_at(from_square)
-
+  def squares_reachable_from(from_square) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    piece = @contents[from_square]
     case piece
     when Pawn
       max_steps = piece.unmoved? ? 2 : 1
       step_moves = squares_front(from_square, step_counts: (1..max_steps)).filter do |to_square|
-        empty_square?(to_square) && empty_between?(from_square, to_square)
+        square_empty?(to_square) && empty_between?(from_square, to_square)
       end
       attack_moves = squares_front_diagonal(from_square).filter do |to_square|
         if occupied?(to_square)
-          color_at(to_square) != piece.color
+          color_on(to_square) != piece.color
         else
           en_passant?(from_square, to_square)
         end
       end
-      moves = step_moves + attack_moves
+      step_moves + attack_moves
     when Bishop
-      moves = squares_diagonal(from_square).filter do |to_square|
-        color_at(to_square) != piece.color && empty_between?(from_square, to_square)
+      squares_diagonal(from_square).filter do |to_square|
+        color_on(to_square) != piece.color && empty_between?(from_square, to_square)
       end
     when Rook
-      moves = squares_straight(from_square).filter do |to_square|
-        color_at(to_square) != piece.color && empty_between?(from_square, to_square)
+      squares_straight(from_square).filter do |to_square|
+        color_on(to_square) != piece.color && empty_between?(from_square, to_square)
       end
     when Queen
-      squares = squares_diagonal(from_square) + squares_straight(from_square)
-      moves = squares.filter do |to_square|
-        color_at(to_square) != piece.color && empty_between?(from_square, to_square)
+      to_squares = squares_diagonal(from_square) + squares_straight(from_square)
+      to_squares.filter do |to_square|
+        color_on(to_square) != piece.color && empty_between?(from_square, to_square)
       end
     when King
-      moves = squares_adjacent(from_square).filter do |to_square|
-        color_at(to_square) != piece.color
+      squares_adjacent(from_square).filter do |to_square|
+        color_on(to_square) != piece.color
       end
     when Knight
-      moves = squares_knight_leap(from_square).filter do |to_square|
-        color_at(to_square) != piece.color
+      squares_knight_leap(from_square).filter do |to_square|
+        color_on(to_square) != piece.color
       end
-    else moves = []
     end
-
-    moves
   end
 
-  def empty_square?(square_name)
-    piece_at(square_name).nil? && square?(square_name)
+  def square_empty?(square_name)
+    @contents[square_name].nil? && square?(square_name)
   end
 
-  def all_empty?(*square_names)
-    square_names.all? { |square_name| empty_square?(square_name) }
+  def squares_empty?(*square_names)
+    square_names.all? { |square_name| square_empty?(square_name) }
   end
 
   def empty_between?(from_square, to_square)
-    all_empty?(*squares_between(from_square, to_square))
+    squares_empty?(*squares_between(from_square, to_square))
   end
 
   def occupied?(square_name)
-    !piece_at(square_name).nil?
+    !@contents[square_name].nil?
   end
 
-  def piece_type_at(square_name)
-    piece_at(square_name)&.class
+  def piece_type_on(square_name)
+    @contents[square_name]&.class
+  end
+
+  def squares_of(color: nil, type: nil) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    raise "Invalid color #{color}\n doesn't match one of these:\n #{[nil, *COLORS]}" unless [nil,
+                                                                                             *COLORS].include?(color)
+
+    squares = if color
+                @contents.select { |_square_name, piece| piece&.color == color }
+              else
+                @contents.select { |square_name, _piece| occupied?(square_name) }
+              end
+
+    squares.select! { |_square_name, piece| piece.instance_of?(type) } if type
+    squares
+  end
+
+  def captured_pieces(color: nil, type: nil)
+    pieces = [].replace(@captures)
+    pieces.select! { |piece| piece.color == color } if color
+    pieces.select! { |piece| piece.instance_of?(type) } if type
+    pieces
   end
 
   def white_pieces
-    @squares.select { |_square_name, piece| piece.color == White }
+    squares_of(color: White)
   end
 
   def black_pieces
-    @squares.select { |_square_name, piece| piece.color == Black }
+    squares_of(color: Black)
   end
 
   def file_letter(square_name)
@@ -248,7 +262,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     FILE_LETTERS.find_index(file_letter(square_name))
   end
 
-  def rank_index(square_name, increase: 0, color: piece_at(square_name)&.color || White)
+  def rank_index(square_name, increase: 0, color: color_on(square_name) || White)
     RANK_NAMES.find_index(rank_name(square_name)) + (increase * color.direction)
   end
 
@@ -277,7 +291,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def square_to_s(square_name, active: nil) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize
-    return 'Invalid input' unless square?(square_name)
+    raise 'Invalid input' unless square?(square_name)
 
     dark = (file_index(square_name) + rank_index(square_name)).even?
 
@@ -290,7 +304,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
          end
     # bg = bg_dark_active if square_name == 'd2'
     # bg = bg_light_active if square_name == 'd7'
-    piece = piece_at(square_name)
+    piece = @contents[square_name]
     fg, symbol = if occupied?(square_name)
                    [piece.color.color_code, piece.symbol]
                  else
