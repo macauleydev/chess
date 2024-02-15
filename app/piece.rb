@@ -11,8 +11,8 @@ class Piece # rubocop:disable Style/Documentation
     @squares_visited.length == 1
   end
 
-  def square=(square_name)
-    @squares_visited << square_name unless square_name == @square
+  def square=(square)
+    @squares_visited << square unless square == @square
   end
 
   attr_reader :color, :squares_visited, :square, :name, :key, :symbol

@@ -12,9 +12,9 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     captured_square = if occupied?(to_square)
                         to_square
                       elsif en_passant?(from_square, to_square)
-                        square_name(file_index(to_square),
-                                    rank_index(to_square,
-                                               increase: -1, color: color_on(from_square)))
+                        square_at(file_index(to_square),
+                                  rank_index(to_square,
+                                             increase: -1, color: color_on(from_square)))
                       end
 
     record_move(from_square, to_square, captured_square:)
@@ -109,9 +109,9 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   end
 
   def en_passant?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-    captured_square = square_name(file_index(to_square),
-                                  rank_index(to_square,
-                                             increase: -1, color: color_on(from_square)))
+    captured_square = square_at(file_index(to_square),
+                                rank_index(to_square,
+                                           increase: -1, color: color_on(from_square)))
 
     if square_empty?(captured_square)
       invalid_reason = 'the square you would capture is empty.'
