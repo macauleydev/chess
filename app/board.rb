@@ -18,12 +18,17 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   INITIAL_RANK_OFFSET = { Rook => 0, Knight => 0, Bishop => 0, Queen => 0, King => 0, Pawn => 1 }.freeze
 
   include Move
-  def initialize(players = [Player.new(White), Player.new(Black)], # rubocop:disable Metrics/ParameterLists
-                 contents = initial_contents(players), moves = [], captures = [])
+  def initialize(players: [Player.new(White), Player.new(Black)], # rubocop:disable Metrics/MethodLength
+                 contents: nil, moves: nil, captures: nil, hypothetical: false)
     @players = players
-    @contents = contents
-    @moves = moves
-    @captures = captures
+    @contents = if contents.nil?
+                  initial_contents(players)
+                else
+                  contents.clone.transform_values(&:clone)
+                end
+    @moves = moves.nil? ? [] : moves.clone
+    @captures = captures.nil? ? [] : captures.clone
+    @hypothetical = hypothetical
 
     @label_rank_left = true
     @label_rank_right = false
@@ -31,7 +36,16 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     @label_file_below = true
   end
   attr_accessor :contents, :moves
-  attr_reader :players
+  attr_reader :players, :captures
+
+  def clone
+    # puts "self: #{inspect}"
+    self.class.new(players:, contents:, moves:, captures:, hypothetical: true)
+  end
+
+  def hypothetical?
+    @hypothetical
+  end
 
   def player
     players[0]
@@ -42,7 +56,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def check?
-    puts "#{player.color.name} is #{in_check?(player.color) ? '' : 'not'} in check. Its king is on #{kings_square(player.color)}"
+    # puts "#{player.color.name} is #{in_check?(player.color) ? '' : 'not'} in check. Its king is on #{kings_square(player.color)}"
     in_check?(player.color)
   end
 
@@ -58,7 +72,9 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
 
   def kings_square(color)
     matching_squares = squares_of(color:, type: King)
-    raise "Interregnum alert! Found #{matching_squares.count} #{color.name} kings." unless matching_squares.count == 1
+    unless matching_squares.count == 1
+      raise "Interregnum alert! Found #{matching_squares.count} #{color.name} kings on this #{hypothetical? ? 'hypothetical' : 'actual'} board.\nBoard contents:\n#{@contents}"
+    end
 
     matching_squares.first
   end
@@ -127,34 +143,34 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def squares_diagonal(from_square)
-    squares_from(from_square, directions: DIAGONAL_STEPS, step_counts: (1..7))
+    squares(from_square, directions: DIAGONAL_STEPS, step_counts: (1..7))
   end
 
   def squares_straight(from_square)
-    squares_from(from_square, directions: STRAIGHT_STEPS, step_counts: (1..7))
+    squares(from_square, directions: STRAIGHT_STEPS, step_counts: (1..7))
   end
 
   def squares_adjacent(from_square)
-    squares_from(from_square,
-                 directions: STRAIGHT_STEPS + DIAGONAL_STEPS,
-                 step_counts: (1..1))
+    squares(from_square,
+            directions: STRAIGHT_STEPS + DIAGONAL_STEPS,
+            step_counts: (1..1))
   end
 
   def squares_front(from_square, step_counts: (1..1))
-    squares_from(from_square, directions: RANK_STEPS, step_counts:)
+    squares(from_square, directions: RANK_STEPS, step_counts:)
       .filter { |to_square| rank_would_grow(from_square, to_square).positive? }
   end
 
   def squares_front_diagonal(from_square)
-    squares_from(from_square, directions: DIAGONAL_STEPS, step_counts: (1..1))
+    squares(from_square, directions: DIAGONAL_STEPS, step_counts: (1..1))
       .filter { |to_square| rank_would_grow(from_square, to_square).positive? }
   end
 
   def squares_knight_leap(from_square)
-    squares_from(from_square, directions: KNIGHT_LEAPS, step_counts: (1..1))
+    squares(from_square, directions: KNIGHT_LEAPS, step_counts: (1..1))
   end
 
-  def squares_from(square, directions: nil, step_counts: (1..7)) # rubocop:disable Metrics/MethodLength
+  def squares(square, directions: nil, step_counts: (1..7)) # rubocop:disable Metrics/MethodLength
     raise "Invalid square, #{square}" unless square?(square)
     raise 'Must specify an array of directions' unless directions in Array
 
@@ -175,10 +191,12 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     when Pawn
       max_steps = piece.unmoved? ? 2 : 1
       step_moves = squares_front(from_square, step_counts: (1..max_steps)).filter do |to_square|
-        square_empty?(to_square) && empty_between?(from_square, to_square)
+        square_empty?(to_square) && empty_between?(from_square, to_square) && valid_move?(from_square, to_square)
       end
       attack_moves = squares_front_diagonal(from_square).filter do |to_square|
-        if occupied?(to_square)
+        if !valid_move?(from_square, to_square)
+          false
+        elsif occupied?(to_square)
           color_on(to_square) != piece.color
         else
           en_passant?(from_square, to_square)
@@ -187,24 +205,27 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
       step_moves + attack_moves
     when Bishop
       squares_diagonal(from_square).filter do |to_square|
-        color_on(to_square) != piece.color && empty_between?(from_square, to_square)
+        color_on(to_square) != piece.color &&
+          empty_between?(from_square, to_square) && valid_move?(from_square, to_square)
       end
     when Rook
       squares_straight(from_square).filter do |to_square|
-        color_on(to_square) != piece.color && empty_between?(from_square, to_square)
+        color_on(to_square) != piece.color &&
+          empty_between?(from_square, to_square) && valid_move?(from_square, to_square)
       end
     when Queen
       to_squares = squares_diagonal(from_square) + squares_straight(from_square)
       to_squares.filter do |to_square|
-        color_on(to_square) != piece.color && empty_between?(from_square, to_square)
+        color_on(to_square) != piece.color &&
+          empty_between?(from_square, to_square) && valid_move?(from_square, to_square)
       end
     when King
       squares_adjacent(from_square).filter do |to_square|
-        color_on(to_square) != piece.color
+        color_on(to_square) != piece.color && valid_move?(from_square, to_square)
       end
     when Knight
       squares_knight_leap(from_square).filter do |to_square|
-        color_on(to_square) != piece.color
+        color_on(to_square) != piece.color && valid_move?(from_square, to_square)
       end
     end
   end
@@ -233,18 +254,21 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     @contents[square]&.class
   end
 
-  def contents_of(color: nil, type: nil) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-    raise "Invalid color #{color}\n doesn't match one of these:\n #{[nil, *COLORS]}" unless [nil,
-                                                                                             *COLORS].include?(color)
+  def contents_of(color: nil, type: nil) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
+    unless [nil,
+            *COLORS].include?(color)
+      raise "Invalid color #{color}\n
+      doesn't match one of these:\n
+      #{[nil, *COLORS]}"
+    end
 
-    contents = if color
-                 @contents.select { |_square, piece| piece&.color == color }
-               else
-                 @contents.select { |square, _piece| occupied?(square) }
-               end
-
-    contents.select! { |_square, piece| piece.instance_of?(type) } if type
-    contents
+    selected_contents = if color
+                          @contents.select { |_square, piece| piece&.color == color }
+                        else
+                          @contents.select { |square, _piece| occupied?(square) }
+                        end
+    selected_contents.select! { |_square, piece| piece.instance_of?(type) } if type
+    selected_contents
   end
 
   def squares_of(color: nil, type: nil)
@@ -272,7 +296,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def captured_pieces(color: nil, type: nil)
-    pieces = [].replace(@captures)
+    pieces = @captures.clone
     pieces.select! { |piece| piece.color == color } if color
     pieces.select! { |piece| piece.instance_of?(type) } if type
     pieces

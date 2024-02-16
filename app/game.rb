@@ -10,7 +10,6 @@ class Game # rubocop:disable Style/Documentation
   end
 
   def play # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity
-    # p active_squares = [@board.moves&.last&.[]('from_square'), @board.moves&.last&.[]('to_square')].compact
     loop do
       prompt, from, to = ''
       loop do
@@ -24,7 +23,8 @@ class Game # rubocop:disable Style/Documentation
         sleep(0.1)
       end
       loop do
-        show_board(active_squares: [from] + @board.squares_reachable_from(from))
+        active_squares = [from] + @board.squares_reachable_from(from)
+        show_board(active_squares:)
         print "#{@board.player.name} moves from #{from} to: "
         to = gets.chomp
 
@@ -42,7 +42,6 @@ class Game # rubocop:disable Style/Documentation
 
   def show_board(active_squares: [])
     system('clear') || system('cls')
-    # p @board.contents
     puts @board.to_s(active_squares:)
   end
 end

@@ -3,8 +3,7 @@ require_relative 'color'
 class Piece # rubocop:disable Style/Documentation
   def initialize(color, squares_visited)
     @color = color
-    @squares_visited = squares_visited
-    @square = squares_visited.last
+    @squares_visited = squares_visited.clone
   end
 
   def unmoved?
@@ -15,7 +14,15 @@ class Piece # rubocop:disable Style/Documentation
     @squares_visited << square unless square == @square
   end
 
-  attr_reader :color, :squares_visited, :square, :name, :key, :symbol
+  def square
+    @squares_visited.last
+  end
+
+  def clone
+    self.class.new(color, squares_visited)
+  end
+
+  attr_reader :color, :squares_visited, :name, :key, :symbol
 end
 
 class Pawn < Piece # rubocop:disable Style/Documentation

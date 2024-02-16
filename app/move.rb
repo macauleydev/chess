@@ -17,15 +17,16 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
                                              increase: -1, color: color_on(from_square)))
                       end
 
-    record_move(from_square, to_square, captured_square:)
+    record_move(from_square, to_square, captured_square:) unless hypothetical?
     make_capture_at(captured_square) if captured_square
     move_piece(from_square, to_square)
   end
 
   def move_piece(from_square, to_square)
+    # puts "Moving piece #{@contents[from_square].inspect} from #{from_square} to #{to_square || 'nil'} on #{hypothetical? ? 'hypothetical' : 'real'} board."
     piece = @contents[from_square]
     @contents[to_square] = piece if to_square
-    piece.square = to_square
+    piece&.square = to_square
     @contents[from_square] = nil
   end
 
@@ -34,7 +35,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   end
 
   def make_capture_at(captured_square)
-    record_capture_at(captured_square)
+    record_capture_at(captured_square) unless hypothetical?
     remove_piece(captured_square)
   end
 
@@ -49,13 +50,28 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     @captures << @contents[captured_square]
   end
 
+  def would_endanger_king?(from_square, to_square)
+    return false if hypothetical? || (@contents[to_square] in King)
+
+    hypothetical_board = clone
+    hypothetical_board.make_move(from_square, to_square)
+    hypothetical_board.check?
+  end
+
   def valid_move?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/AbcSize,Metrics/PerceivedComplexity
     # assumed: both squares are on the board; from_square is correct color
-    piece = @contents[from_square]
+    mover = @contents[from_square]
+    target = @contents[to_square]
     return false if color_on(to_square) == color_on(from_square)
-    return valid_attack?(from_square, to_square) unless square_empty?(to_square)
 
-    case piece
+    if would_endanger_king?(from_square, to_square)
+      puts 'Invalid move because it seems to result in check.'
+      return false
+    end
+
+    return valid_attack?(from_square, to_square) if occupied?(to_square)
+
+    case mover
     when Pawn
       case file_shift(from_square, to_square).abs
       when 1
@@ -63,7 +79,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
       when 0
         steps = rank_would_grow(from_square, to_square)
         allowed_steps = [1]
-        allowed_steps << 2 if piece.unmoved?
+        allowed_steps << 2 if mover.unmoved?
         allowed_steps.include?(steps) &&
           empty_between?(from_square, to_square)
       else false
