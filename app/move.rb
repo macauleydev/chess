@@ -7,7 +7,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   ALL_STEPS = STRAIGHT_STEPS + DIAGONAL_STEPS
   KNIGHT_LEAPS = [1, -1].product([2, -2]) + [2, -2].product([1, -1])
 
-  def make_move(from_square, to_square)
+  def make_move(from_square, to_square) # rubocop:disable Metrics/MethodLength
     # assumed: move is valid
     captured_square = if occupied?(to_square)
                         to_square
@@ -20,6 +20,10 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     record_move(from_square, to_square, captured_square:) unless hypothetical?
     make_capture_at(captured_square) if captured_square
     move_piece(from_square, to_square)
+    rotate_players
+    return unless check?
+
+    checkmate? ? record_checkmate : record_check
   end
 
   def move_piece(from_square, to_square)
@@ -42,15 +46,21 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   def record_move(from_square, to_square, captured_square: nil, check: nil)
     piece_type = piece_type_on(from_square)
     captured_piece_type = piece_type_on(captured_square) if captured_square
-    check = true if check?
-    @moves << { from_square:, to_square:, piece_type:, captured_square:, captured_piece_type:, check: }
+    if check?
+      checkmate? ? checkmate = true : check = true
+    end
+    @moves << { from_square:, to_square:, piece_type:, captured_square:, captured_piece_type:, check:, checkmate: }
   end
 
   def record_capture_at(captured_square)
     @captures << @contents[captured_square]
   end
 
-  def would_endanger_king?(from_square, to_square)
+  def record_checkmate; end
+
+  def record_check; end
+
+  def would_endanger_own_king?(from_square, to_square)
     return false if hypothetical? || (@contents[to_square] in King)
 
     hypothetical_board = clone
@@ -64,7 +74,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     target = @contents[to_square]
     return false if color_on(to_square) == color_on(from_square)
 
-    if would_endanger_king?(from_square, to_square)
+    if would_endanger_own_king(from_square, to_square)
       puts 'Invalid move because it seems to result in check.'
       return false
     end
@@ -174,6 +184,14 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
 
   def knight_leap?(from_square, to_square)
     KNIGHT_LEAPS.include?(file_rank_would_change(from_square, to_square))
+  end
+
+  def possible_moves(color: player.color)
+    from_squares = squares_of(color:)
+    from_squares.reduce([]) do |collected_moves, from_square|
+      to_squares = squares_reachable_from(from_square)
+      collected_moves + [from_square].product(to_squares)
+    end
   end
 
   private

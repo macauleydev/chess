@@ -57,11 +57,44 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
 
   def check?
     # puts "#{player.color.name} is #{in_check?(player.color) ? '' : 'not'} in check. Its king is on #{kings_square(player.color)}"
-    in_check?(player.color)
+    in_check?(player.color) unless cannot_keep_king_safe?(player.color)
   end
 
   def in_check?(color)
+    raise "Invalid color #{color} (must be one of #{COLORS})" unless COLORS.include?(color)
+
     king_in_danger?(color)
+  end
+
+  def checkmate?
+    in_checkmate?(player.color)
+  end
+
+  def in_checkmate?(color)
+    raise "Invalid color #{color} (must be one of #{COLORS})" unless COLORS.include?(color)
+
+    king_in_danger?(color) && cannot_keep_king_safe?(color)
+  end
+
+  def stalemate?
+    in_stalemate?(player.color)
+  end
+
+  def in_stalemate?(color)
+    raise "Invalid color #{color} (must be one of #{COLORS})" unless COLORS.include?(color)
+
+    !king_in_danger?(color) && cannot_keep_king_safe?(color)
+  end
+
+  def cannot_keep_king_safe?(color)
+    raise "Invalid color #{color} (must be one of #{COLORS})" unless COLORS.include?(color)
+
+    # Gather color's all possible moves
+    # Iterate them, checking if king is in danger
+    # Find none for which king is safe
+    possible_moves(color:).all? do |from_square, to_square|
+      would_endanger_own_king?(from_square, to_square)
+    end
   end
 
   def inverse(color)

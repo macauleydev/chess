@@ -44,4 +44,21 @@ class Game # rubocop:disable Style/Documentation
     system('clear') || system('cls')
     puts @board.to_s(active_squares:)
   end
+
+  def to_s # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
+    @board.moves.each_with_index.reduce('') do |game, (move, index)|
+      if index.even?
+        newline = "\n" if index.positive?
+        move_pair_number = "#{newline}#{(index / 2) + 1}."
+      end
+      piece = (move[piece_type] in Pawn) ? '' : move[piece_type.key]
+      to_square = move[to_square]
+      capture = move[captured_square] ? 'x' : ''
+      check = move[check] ? '+' : ''
+      checkmate = move[checkmate] ? '#' : ''
+      move = "#{piece}#{capture}#{to_square}#{check || checkmate}"
+      move += "\n" if index.odd?
+      game + "#{move_pair_number || ''} #{move}"
+    end
+  end
 end
