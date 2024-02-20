@@ -9,13 +9,13 @@ class Game # rubocop:disable Style/Documentation
     @board = board
   end
 
-  def play # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity
-    loop do
+  def play # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    loop do # rubocop:disable Metrics/BlockLength
       prompt, from, to = ''
       loop do
         show_board
-        puts 'Check!' if @board.check?
-        print(prompt = "#{@board.player.name} moves from: ")
+        puts 'Check!' if check?
+        print("\n" + prompt = "#{@board.player.name} moves from: ") # rubocop:disable Style/StringConcatenation
         from = gets.chomp
         break if @board.color_on(from) == @board.player.color && @board.squares_reachable_from(from)&.count&.positive?
 
@@ -25,7 +25,7 @@ class Game # rubocop:disable Style/Documentation
       loop do
         active_squares = [from] + @board.squares_reachable_from(from)
         show_board(active_squares:)
-        print "#{@board.player.name} moves from #{from} to: "
+        print "\n#{@board.player.name} moves from #{from} to: "
         to = gets.chomp
 
         next unless @board.square?(to) && @board.valid_move?(from, to)
@@ -35,9 +35,29 @@ class Game # rubocop:disable Style/Documentation
         sleep(0.2)
         break
       end
+      if checkmate?
+        show_board
+        puts 'Checkmate!'
+        break
+      elsif draw?
+        show_board
+        puts 'Draw.'
+        break
+      end
       # break if check
-      @board.rotate_players
     end
+  end
+
+  def check?
+    @board.moves&.last&.[](:check)
+  end
+
+  def checkmate?
+    @board.moves&.last&.[](:checkmate)
+  end
+
+  def draw?
+    @board.moves&.last&.[](:draw)
   end
 
   def show_board(active_squares: [])

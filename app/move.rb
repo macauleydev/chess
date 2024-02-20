@@ -20,10 +20,9 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     record_move(from_square, to_square, captured_square:) unless hypothetical?
     make_capture_at(captured_square) if captured_square
     move_piece(from_square, to_square)
-    rotate_players
-    return unless check?
+    # puts "Rotating players from #{player.color.name} on #{hypothetical? ? 'hypothetical' : 'real'} board."
 
-    checkmate? ? record_checkmate : record_check
+    rotate_players unless hypothetical?
   end
 
   def move_piece(from_square, to_square)
@@ -43,41 +42,62 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     remove_piece(captured_square)
   end
 
-  def record_move(from_square, to_square, captured_square: nil, check: nil)
+  def record_move(from_square, to_square, captured_square: nil) # rubocop:disable Metrics/MethodLength
+    case [threatens_king?(from_square, to_square), traps_king?(from_square, to_square)]
+    in [true, false] then check = true
+    in [true, true] then checkmate = true
+    in [false, true] then draw = true
+    else
+    end
     piece_type = piece_type_on(from_square)
     captured_piece_type = piece_type_on(captured_square) if captured_square
-    if check?
-      checkmate? ? checkmate = true : check = true
-    end
-    @moves << { from_square:, to_square:, piece_type:, captured_square:, captured_piece_type:, check:, checkmate: }
+    @moves << { from_square:, to_square:,
+                piece_type:, captured_piece_type:,
+                check:, checkmate:, draw: }
+    p @moves.last
   end
 
   def record_capture_at(captured_square)
     @captures << @contents[captured_square]
   end
 
-  def record_checkmate; end
+  def threatens_king?(from_square, to_square)
+    return false if hypothetical?
 
-  def record_check; end
-
-  def would_endanger_own_king?(from_square, to_square)
-    return false if hypothetical? || (@contents[to_square] in King)
-
+    moving_color = color_on(from_square)
     hypothetical_board = clone
     hypothetical_board.make_move(from_square, to_square)
-    hypothetical_board.check?
+    hypothetical_board.king_threatened?(inverse(moving_color))
+  end
+
+  def traps_king?(from_square, to_square)
+    return false if hypothetical?
+
+    moving_color = color_on(from_square)
+    hypothetical_board = clone
+    hypothetical_board.make_move(from_square, to_square)
+    hypothetical_board.king_trapped?(inverse(moving_color))
+  end
+
+  def would_endanger_own_king?(from_square, to_square)
+    return false if @contents[to_square] in King
+
+    color = color_on(from_square)
+    hypothetical_board = clone
+    hypothetical_board.make_move(from_square, to_square)
+    hypothetical_board.king_threatened?(color)
   end
 
   def valid_move?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/AbcSize,Metrics/PerceivedComplexity
     # assumed: both squares are on the board; from_square is correct color
     mover = @contents[from_square]
     target = @contents[to_square]
-    return false if color_on(to_square) == color_on(from_square)
-
-    if would_endanger_own_king(from_square, to_square)
-      puts 'Invalid move because it seems to result in check.'
+    if color_on(to_square) == color_on(from_square)
+      puts flag
       return false
     end
+
+    return false if would_endanger_own_king?(from_square, to_square)
 
     return valid_attack?(from_square, to_square) if occupied?(to_square)
 
@@ -189,7 +209,9 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   def possible_moves(color: player.color)
     from_squares = squares_of(color:)
     from_squares.reduce([]) do |collected_moves, from_square|
-      to_squares = squares_reachable_from(from_square)
+      to_squares = squares_reachable_from(from_square).filter do |to_square|
+        !would_endanger_own_king?(from_square, to_square)
+      end
       collected_moves + [from_square].product(to_squares)
     end
   end
