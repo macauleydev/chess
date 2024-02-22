@@ -49,19 +49,16 @@ module Move
     else
     end
     piece = @contents[from_square]
-    piece_type = piece_type_on(from_square)
     if captured_square
       captured_piece = @contents[captured_square]
-      captured_piece_type = piece_type_on(captured_square)
       capture = true
       en_passant = true if captured_square != to_square
     end
     @moves << {from_square:, to_square:,
                 piece:, captured_piece:,
-                piece_type:, captured_piece_type:,
                 capture:, en_passant:,
                 check:, checkmate:, draw:}
-    p @moves.last
+    # p @moves.last
   end
 
   def record_capture_at(captured_square)
@@ -169,7 +166,7 @@ module Move
       # invalid_reason = "the square you would capture is your own color."
     elsif @moves&.last&.[](:to_square) != captured_square
       # invalid_reason = "the square you would capture wasn't the last move's target."
-    elsif @moves&.last&.[](:piece_type) != Pawn
+    elsif @moves&.last&.[](:piece).class != Pawn
       # invalid_reason = "the last piece moved wasn't a Pawn."
     elsif rank_grew(@moves&.last&.[](:from_square), @moves&.last&.[](:to_square)) != 2
       # invalid_reason = "the last move wasn't from two ranks behind the target square."

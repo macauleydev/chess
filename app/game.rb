@@ -10,34 +10,10 @@ class Game
   end
 
   def play
-    show_board
-    puts "Welcome to Terminal Chess! (powered by Ruby)"
-    puts
-    puts "If the chess pieces are hard to see, please find\nyour keyboard's Cmd (Mac) or Ctrl (Windows/Linux) key,\nthen hold it while pressing = (+) or - to zoom in or out."
-    puts
-    print "Press Enter to continue."
-    gets
+    show_welcome
     loop do
-      prompt, from, to, input = ""
-      loop do
-        show_board
-        puts "Check!" if check?
-        puts faded("Enter move as coordinates (b1c3) or\nin minimal algebraic notation (Nc3).\nType ? for help.")
-        print("\n" + prompt = "#{@board.player.name}'s move: ")
-        input = gets.chomp
-        next unless coordinates(input)
-        break if @board.valid_move?(*coordinates(input))
-      end
-      from, to = coordinates(input)
-      show_board(active_squares: [from])
-      sleep(0.1)
-      show_board(active_squares: [from, to] + @board.squares_between(from, to))
-      sleep(0.1)
-      @board.make_move(from, to)
-      show_board(active_squares: [from, to])
-      sleep(0.1)
-      show_board(active_squares: [to])
-      sleep(0.1)
+      input = get_move
+      animate_board(*coordinates(input))
       if checkmate?
         show_board
         puts "Checkmate!"
@@ -47,6 +23,39 @@ class Game
         puts "Draw."
         break
       end
+    end
+  end
+
+  def show_welcome
+    show_board
+    puts "Welcome to Terminal Chess! (powered by Ruby)"
+    puts
+    puts "If the chess pieces are hard to see, please find\nyour keyboard's Cmd (Mac) or Ctrl (Windows/Linux) key,\nthen hold it while pressing = (+) or - to zoom in or out."
+    puts
+    print "Press Enter to continue."
+    gets
+  end
+
+  def animate_board(from, to)
+    show_board(active_squares: [from])
+    sleep(0.1)
+    show_board(active_squares: [from, to] + @board.squares_between(from, to))
+    sleep(0.1)
+    @board.make_move(from, to)
+    show_board(active_squares: [from, to])
+    sleep(0.1)
+    show_board(active_squares: [to])
+    sleep(0.1)
+  end
+
+  def get_move
+    loop do
+      show_board
+      puts "Check!" if check?
+      puts faded("Enter move as coordinates (b1c3) or\nin minimal algebraic notation (Nc3).\nType ? for help.")
+      print("\n#{@board.player.name}'s move: ")
+      input = gets.chomp
+      return input if coordinates(input) && @board.valid_move?(*coordinates(input))
     end
   end
 
@@ -136,7 +145,7 @@ class Game
     else
       return nil
     end
-    puts "Coordinates parsed as: [#{from_square}, #{to_square}]"
+    # puts "Coordinates parsed as: [#{from_square}, #{to_square}]"
     [from_square, to_square] if from_square
   end
 
@@ -157,7 +166,7 @@ class Game
         end
       to_square = move[:to_square]
       capture = move[:capture] ? "x" : ""
-      en_passant = move[:en_passant] ? "e.p." : ""
+      en_passant = move[:en_passant] ? " e.p." : ""
       check = move[:check] ? "+" : nil
       checkmate = move[:checkmate] ? "#" : nil
       move = "#{piece}#{capture}#{to_square}#{en_passant}#{check || checkmate}"
