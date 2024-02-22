@@ -30,11 +30,8 @@ class Board
     @moves = moves.nil? ? [] : moves.clone
     @captures = captures.nil? ? [] : captures.clone
     @hypothetical = hypothetical
-
-    @label_rank_left = true
-    @label_rank_right = false
-    @label_file_above = false
-    @label_file_below = true
+    @label_files = {above: false, below: true}
+    @label_ranks = {left: true, right: false}
   end
   attr_accessor :contents, :moves
   attr_reader :players, :captures
@@ -325,8 +322,8 @@ class Board
     board_rows = RANK_NAMES.reverse_each.reduce("") do |partial_board, rank_name|
       partial_board + rank_to_s(rank_name, active_squares:)
     end
-    above = @label_file_above ? file_labels_row : ""
-    below = @label_file_below ? file_labels_row : ""
+    above = @label_files[:above] ? file_labels_row : ""
+    below = @label_files[:below] ? file_labels_row : ""
     above + board_rows + below
   end
 
@@ -336,8 +333,8 @@ class Board
       active = active_squares&.include?(square)
       square_to_s("#{file_letter}#{rank_name}", active:)
     end.join
-    left = @label_rank_left ? "#{label_format(rank_name)} " : ""
-    right = @label_rank_right ? " #{label_format(rank_name)}" : ""
+    left = @label_ranks[:left] ? "#{label_format(rank_name)} " : ""
+    right = @label_ranks[:right] ? " #{label_format(rank_name)}" : ""
     "#{left}#{board_row}#{right}\n"
   end
 
@@ -368,8 +365,8 @@ class Board
   end
 
   def file_labels_row
-    left = @label_rank_left ? "  " : ""
-    right = @label_rank_right ? "  " : ""
+    left = @label_ranks[:left] ? "  " : ""
+    right = @label_ranks[:right] ? "  " : ""
     labels = "#{label_format(FILE_LETTERS.to_a.join(" "))} "
     "#{left}#{labels}#{right}\n"
   end
