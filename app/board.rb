@@ -1,12 +1,12 @@
-require 'paint'
-require_relative 'move'
-require_relative 'piece'
-require_relative 'player'
+require "paint"
+require_relative "move"
+require_relative "piece"
+require_relative "player"
 
-class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
-  FILE_LETTERS = ('a'..'h')
+class Board
+  FILE_LETTERS = ("a".."h")
   RANK_NUMBERS = (1..8)
-  RANK_NAMES = ('1'..'8')
+  RANK_NAMES = ("1".."8")
 
   COLORS = [White, Black].freeze
   PIECE_TYPES = Piece.subclasses
@@ -15,17 +15,18 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     Queen => %w[d], King => %w[e],
     Pawn => %w[a b c d e f g h]
   }.freeze
-  INITIAL_RANK_OFFSET = { Rook => 0, Knight => 0, Bishop => 0, Queen => 0, King => 0, Pawn => 1 }.freeze
+  INITIAL_RANK_OFFSET = {Rook => 0, Knight => 0, Bishop => 0, Queen => 0, King => 0, Pawn => 1}.freeze
 
   include Move
-  def initialize(players: [Player.new(White), Player.new(Black)], # rubocop:disable Metrics/MethodLength
-                 contents: nil, moves: nil, captures: nil, hypothetical: false)
+  def initialize(players: [Player.new(White), Player.new(Black)],
+    contents: nil, moves: nil, captures: nil, hypothetical: false)
     @players = players
-    @contents = if contents.nil?
-                  initial_contents(players)
-                else
-                  contents.clone.transform_values(&:clone)
-                end
+    @contents =
+      if contents.nil?
+        initial_contents(players)
+      else
+        contents.clone.transform_values(&:clone)
+      end
     @moves = moves.nil? ? [] : moves.clone
     @captures = captures.nil? ? [] : captures.clone
     @hypothetical = hypothetical
@@ -39,7 +40,6 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   attr_reader :players, :captures
 
   def clone
-    # puts "self: #{inspect}"
     self.class.new(players:, contents:, moves:, captures:, hypothetical: true)
   end
 
@@ -58,7 +58,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   def king_trapped?(color)
     raise "Invalid color #{color} (must be one of #{COLORS})" unless COLORS.include?(color)
 
-    possible_moves(color:).all? do |from_square, to_square|
+    legal_moves(color:).all? do |from_square, to_square|
       would_endanger_own_king?(from_square, to_square)
     end
   end
@@ -72,7 +72,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   def kings_square(color)
     matching_squares = squares_of(color:, type: King)
     unless matching_squares.count == 1
-      raise "Interregnum alert! Found #{matching_squares.count} #{color.name} kings on this #{hypothetical? ? 'hypothetical' : 'actual'} board.\nBoard contents:\n#{@contents}"
+      raise "Interregnum alert! Found #{matching_squares.count} #{color.name} kings on this #{hypothetical? ? "hypothetical" : "actual"} board.\nBoard contents:\n#{@contents}"
     end
 
     matching_squares.first
@@ -86,7 +86,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     opponents_squares.any? { |opponents_square| valid_move?(opponents_square, kings_square) }
   end
 
-  def initial_contents(players) # rubocop:disable Metrics/MethodLength
+  def initial_contents(players)
     contents = {}
     players.each do |player|
       color = player.color
@@ -119,14 +119,14 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     squares.all? { |square| square?(square) }
   end
 
-  def squares_between(from_square, to_square) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+  def squares_between(from_square, to_square)
     raise "Invalid squares(s): #{from_square} and/or #{to_square}" unless all_square?(from_square, to_square)
 
     from_x, from_y = file_rank_index(from_square)
     to_x, to_y = file_rank_index(to_square)
     delta_x = to_x - from_x
     delta_y = to_y - from_y
-    return unless [delta_x.abs, delta_y.abs] in [2..7, 0] | [0, 2..7] | [2..7 => _steps, ^_steps]
+    return [] unless [delta_x.abs, delta_y.abs] in [2..7, 0] | [0, 2..7] | [2..7 => _steps, ^_steps]
 
     steps = [delta_x.abs, delta_y.abs].max
     x_step = delta_x / steps
@@ -146,8 +146,8 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
 
   def squares_adjacent(from_square)
     squares(from_square,
-            directions: STRAIGHT_STEPS + DIAGONAL_STEPS,
-            step_counts: (1..1))
+      directions: STRAIGHT_STEPS + DIAGONAL_STEPS,
+      step_counts: (1..1))
   end
 
   def squares_front(from_square, step_counts: (1..1))
@@ -164,9 +164,9 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     squares(from_square, directions: KNIGHT_LEAPS, step_counts: (1..1))
   end
 
-  def squares(square, directions: nil, step_counts: (1..7)) # rubocop:disable Metrics/MethodLength
+  def squares(square, directions: nil, step_counts: (1..7))
     raise "Invalid square, #{square}" unless square?(square)
-    raise 'Must specify an array of directions' unless directions in Array
+    raise "Must specify an array of directions" unless directions in Array
 
     x, y = file_rank_index(square)
     squares = []
@@ -179,7 +179,7 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     squares
   end
 
-  def squares_reachable_from(from_square) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+  def squares_reachable_from(from_square)
     piece = @contents[from_square]
     case piece
     when Pawn
@@ -248,19 +248,20 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
     @contents[square]&.class
   end
 
-  def contents_of(color: nil, type: nil) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
+  def contents_of(color: nil, type: nil)
     unless [nil,
-            *COLORS].include?(color)
+      *COLORS].include?(color)
       raise "Invalid color #{color}\n
       doesn't match one of these:\n
       #{[nil, *COLORS]}"
     end
 
-    selected_contents = if color
-                          @contents.select { |_square, piece| piece&.color == color }
-                        else
-                          @contents.select { |square, _piece| occupied?(square) }
-                        end
+    selected_contents =
+      if color
+        @contents.select { |_square, piece| piece&.color == color }
+      else
+        @contents.select { |square, _piece| occupied?(square) }
+      end
     selected_contents.select! { |_square, piece| piece.instance_of?(type) } if type
     selected_contents
   end
@@ -321,11 +322,11 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
   end
 
   def to_s(active_squares: nil)
-    board_rows = RANK_NAMES.reverse_each.reduce('') do |partial_board, rank_name|
+    board_rows = RANK_NAMES.reverse_each.reduce("") do |partial_board, rank_name|
       partial_board + rank_to_s(rank_name, active_squares:)
     end
-    above = @label_file_above ? file_labels_row : ''
-    below = @label_file_below ? file_labels_row : ''
+    above = @label_file_above ? file_labels_row : ""
+    below = @label_file_below ? file_labels_row : ""
     above + board_rows + below
   end
 
@@ -335,62 +336,65 @@ class Board # rubocop:disable Style/Documentation,Metrics/ClassLength
       active = active_squares&.include?(square)
       square_to_s("#{file_letter}#{rank_name}", active:)
     end.join
-    left = @label_rank_left ? "#{label_format(rank_name)} " : ''
-    right = @label_rank_right ? " #{label_format(rank_name)}" : ''
+    left = @label_rank_left ? "#{label_format(rank_name)} " : ""
+    right = @label_rank_right ? " #{label_format(rank_name)}" : ""
     "#{left}#{board_row}#{right}\n"
   end
 
-  def square_to_s(square, active: nil) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize
+  def square_to_s(square, active: nil)
     raise "Invalid square, #{square}" unless square?(square)
 
     dark = (file_index(square) + rank_index(square)).even?
 
-    bg = case [dark, active]
-         in [true, nil|false] then bg_dark
-         in [true, true] then bg_dark_active
-         in [false, nil|false] then bg_light
-         in [false, true] then bg_light_active
-         else puts "Failed pattern matching. dark = #{dark}, active = #{active}."
-         end
+    bg =
+      case [dark, active]
+      in [true, nil|false] then bg_dark
+      in [true, true] then bg_dark_active
+      in [false, nil|false] then bg_light
+      in [false, true] then bg_light_active
+      else puts "Failed pattern matching. dark = #{dark}, active = #{active}."
+      end
     # bg = bg_dark_active if square == 'd2'
     # bg = bg_light_active if square == 'd7'
     piece = @contents[square]
     fg, symbol = if occupied?(square)
-                   [piece.color.color_code, piece.symbol]
-                 else
-                   [nil, ' ']
-                 end
+      [piece.color.color_code, piece.symbol]
+    else
+      [nil, " "]
+    end
+    symbol = piece.symbol_alt if @moves&.last&.[](:check) && square == kings_square(player.color)
+
     Paint["#{symbol} ", fg, bg]
   end
 
   def file_labels_row
-    left = @label_rank_left ? '  ' : ''
-    right = @label_rank_right ? '  ' : ''
-    labels = "#{label_format(FILE_LETTERS.to_a.join(' '))} "
+    left = @label_rank_left ? "  " : ""
+    right = @label_rank_right ? "  " : ""
+    labels = "#{label_format(FILE_LETTERS.to_a.join(" "))} "
     "#{left}#{labels}#{right}\n"
   end
 
   def label_format(string)
-    Paint[string, fg_label]
+    Paint[string, fg_faded]
   end
 
   def bg_dark
-    '#cc7c2b'
+    "#cc7c2b"
   end
 
   def bg_light
-    '#e8a869'
+    "#e8a869"
   end
 
   def bg_dark_active
-    '#a09512'
+    "#a09512"
   end
 
   def bg_light_active
-    '#c3bb62'
+    "#c3bb62"
   end
 
-  def fg_label
-    '#777777'
+  def fg_faded
+    "#777777"
   end
 end

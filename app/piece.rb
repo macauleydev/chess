@@ -1,6 +1,6 @@
-require_relative 'color'
+require_relative "color"
 
-class Piece # rubocop:disable Style/Documentation
+class Piece
   def initialize(color, squares_visited)
     @color = color
     @squares_visited = squares_visited.clone
@@ -22,59 +22,74 @@ class Piece # rubocop:disable Style/Documentation
     self.class.new(color, squares_visited)
   end
 
-  attr_reader :color, :squares_visited, :name, :key, :symbol
+  def self.input_key
+    @@input_key || @@key
+  end
+
+  def self.output_key
+    @@output_key || @@key
+  end
+
+  def self.key
+    @@key || @@output_key || @@input_key
+  end
+
+  @@key = @@input_key = @@output_key = nil
+  attr_reader :color, :squares_visited, :name, :key, :symbol, :symbol_alt
 end
 
-class Pawn < Piece # rubocop:disable Style/Documentation
+class Pawn < Piece
   def initialize(color, squares_visited)
     super
-    @name = 'pawn'
-    @key = 'P'
-    @symbol = '♟'
+    @name = "pawn"
+    @@input_key = @key = "P"
+    @@output_key = ""
+    @symbol = "\u265F"
   end
 end
 
-class Rook < Piece # rubocop:disable Style/Documentation
+class Rook < Piece
   def initialize(color, squares_visited)
     super
-    @name = 'rook'
-    @key = 'R'
-    @symbol = '♜'
+    @name = "rook"
+    @@key = @key = "R"
+    @symbol = "\u265C"
   end
 end
 
-class Knight < Piece # rubocop:disable Style/Documentation
+class Knight < Piece
   def initialize(color, squares_visited)
     super
-    @name = 'knight'
-    @key = 'N'
-    @symbol = '♞'
+    @name = "knight"
+    @@key = @key = "N"
+    @symbol = "\u265E"
   end
 end
 
-class Bishop < Piece # rubocop:disable Style/Documentation
+class Bishop < Piece
   def initialize(color, squares_visited)
     super
-    @name = 'bishop'
-    @key = 'B'
-    @symbol = '♝'
+    @name = "bishop"
+    @@key = @key = "B"
+    @symbol = "\u265D"
   end
 end
 
-class King < Piece # rubocop:disable Style/Documentation
+class King < Piece
   def initialize(color, squares_visited)
     super
-    @name = 'king'
-    @key = 'K'
-    @symbol = '♚'
+    @name = "king"
+    @@key = @key = "K"
+    @symbol = "\u265A"
+    @symbol_alt = "\u2654"
   end
 end
 
-class Queen < Piece # rubocop:disable Style/Documentation
+class Queen < Piece
   def initialize(color, squares_visited)
     super
-    @name = 'queen'
-    @key = 'Q'
-    @symbol = '♛'
+    @name = "queen"
+    @@key = @key = "Q"
+    @symbol = "\u265B"
   end
 end

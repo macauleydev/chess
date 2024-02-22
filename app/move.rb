@@ -1,5 +1,5 @@
-require_relative 'board'
-module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
+require_relative "board"
+module Move
   FILE_STEPS = [1, -1].product([0])
   RANK_STEPS = [0].product([1, -1])
   STRAIGHT_STEPS = FILE_STEPS + RANK_STEPS
@@ -7,26 +7,25 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
   ALL_STEPS = STRAIGHT_STEPS + DIAGONAL_STEPS
   KNIGHT_LEAPS = [1, -1].product([2, -2]) + [2, -2].product([1, -1])
 
-  def make_move(from_square, to_square) # rubocop:disable Metrics/MethodLength
+  def make_move(from_square, to_square)
     # assumed: move is valid
-    captured_square = if occupied?(to_square)
-                        to_square
-                      elsif en_passant?(from_square, to_square)
-                        square_at(file_index(to_square),
-                                  rank_index(to_square,
-                                             increase: -1, color: color_on(from_square)))
-                      end
+    captured_square =
+      if occupied?(to_square)
+        to_square
+      elsif en_passant?(from_square, to_square)
+        square_at(file_index(to_square),
+          rank_index(to_square,
+            increase: -1, color: color_on(from_square)))
+      end
 
     record_move(from_square, to_square, captured_square:) unless hypothetical?
     make_capture_at(captured_square) if captured_square
     move_piece(from_square, to_square)
-    # puts "Rotating players from #{player.color.name} on #{hypothetical? ? 'hypothetical' : 'real'} board."
 
     rotate_players unless hypothetical?
   end
 
   def move_piece(from_square, to_square)
-    # puts "Moving piece #{@contents[from_square].inspect} from #{from_square} to #{to_square || 'nil'} on #{hypothetical? ? 'hypothetical' : 'real'} board."
     piece = @contents[from_square]
     @contents[to_square] = piece if to_square
     piece&.square = to_square
@@ -42,18 +41,26 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     remove_piece(captured_square)
   end
 
-  def record_move(from_square, to_square, captured_square: nil) # rubocop:disable Metrics/MethodLength
+  def record_move(from_square, to_square, captured_square: nil)
     case [threatens_king?(from_square, to_square), traps_king?(from_square, to_square)]
     in [true, false] then check = true
     in [true, true] then checkmate = true
     in [false, true] then draw = true
     else
     end
+    piece = @contents[from_square]
     piece_type = piece_type_on(from_square)
-    captured_piece_type = piece_type_on(captured_square) if captured_square
-    @moves << { from_square:, to_square:,
+    if captured_square
+      captured_piece = @contents[captured_square]
+      captured_piece_type = piece_type_on(captured_square)
+      capture = true
+      en_passant = true if captured_square != to_square
+    end
+    @moves << {from_square:, to_square:,
+                piece:, captured_piece:,
                 piece_type:, captured_piece_type:,
-                check:, checkmate:, draw: }
+                capture:, en_passant:,
+                check:, checkmate:, draw:}
     p @moves.last
   end
 
@@ -88,14 +95,11 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     hypothetical_board.king_threatened?(color)
   end
 
-  def valid_move?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/AbcSize,Metrics/PerceivedComplexity
+  def valid_move?(from_square, to_square)
     # assumed: both squares are on the board; from_square is correct color
     mover = @contents[from_square]
     target = @contents[to_square]
-    if color_on(to_square) == color_on(from_square)
-      puts flag
-      return false
-    end
+    return false if color_on(to_square) == color_on(from_square)
 
     return false if would_endanger_own_king?(from_square, to_square)
 
@@ -132,7 +136,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     end
   end
 
-  def valid_attack?(from_square, to_square) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength
+  def valid_attack?(from_square, to_square)
     case @contents[from_square]
     when Pawn
       file_shift(from_square, to_square).abs == 1 && rank_would_grow(from_square, to_square) == 1
@@ -154,21 +158,21 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     end
   end
 
-  def en_passant?(from_square, to_square) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+  def en_passant?(from_square, to_square)
     captured_square = square_at(file_index(to_square),
-                                rank_index(to_square,
-                                           increase: -1, color: color_on(from_square)))
+      rank_index(to_square,
+        increase: -1, color: color_on(from_square)))
 
     if square_empty?(captured_square)
-      invalid_reason = 'the square you would capture is empty.'
+      # invalid_reason = "the square you would capture is empty."
     elsif color_on(from_square) == color_on(captured_square)
-      invalid_reason = 'the square you would capture is your own color.'
+      # invalid_reason = "the square you would capture is your own color."
     elsif @moves&.last&.[](:to_square) != captured_square
-      invalid_reason = "the square you would capture wasn't the last move's target."
+      # invalid_reason = "the square you would capture wasn't the last move's target."
     elsif @moves&.last&.[](:piece_type) != Pawn
-      invalid_reason = "the last piece moved wasn't a Pawn."
+      # invalid_reason = "the last piece moved wasn't a Pawn."
     elsif rank_grew(@moves&.last&.[](:from_square), @moves&.last&.[](:to_square)) != 2
-      invalid_reason = "the last move wasn't from two ranks behind the target square."
+      # invalid_reason = "the last move wasn't from two ranks behind the target square."
     else
       return true
     end
@@ -187,7 +191,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
 
   def file_rank_would_change(from_square, to_square)
     [file_shift(from_square, to_square),
-     rank_would_grow(from_square, to_square)]
+      rank_would_grow(from_square, to_square)]
   end
 
   def diagonal?(from_square, to_square)
@@ -206,7 +210,7 @@ module Move # rubocop:disable Style/Documentation,Metrics/ModuleLength
     KNIGHT_LEAPS.include?(file_rank_would_change(from_square, to_square))
   end
 
-  def possible_moves(color: player.color)
+  def legal_moves(color: player.color)
     from_squares = squares_of(color:)
     from_squares.reduce([]) do |collected_moves, from_square|
       to_squares = squares_reachable_from(from_square).filter do |to_square|
