@@ -32,8 +32,9 @@ class Board
     @hypothetical = hypothetical
     @label_files = {above: false, below: true}
     @label_ranks = {left: true, right: false}
+    @labels_hidden = false
   end
-  attr_accessor :contents, :moves
+  attr_accessor :contents, :moves, :labels_hidden
   attr_reader :players, :captures
 
   def clone
@@ -372,6 +373,9 @@ class Board
   end
 
   def label_format(string)
+    if @labels_hidden
+      string = string.replace(" " * string.length)
+    end
     Paint[string, fg_faded]
   end
 
