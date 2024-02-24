@@ -59,8 +59,6 @@ class Game
 
   def get_valid_move
     loop do
-      # from, to = @board.moves&.last&.[](:from_square), @board.moves&.last&.[](:to_square)
-      # show_board(active_squares: [from, to])
       show_board
       puts "Check!" if check?
       if @show_help || @board.moves.count.zero?

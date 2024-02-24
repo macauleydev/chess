@@ -9,60 +9,60 @@ module Move
 
   def make_move(from_square, to_square)
     # assumed: move is valid
-    captured_square =
+    capture_square =
       if occupied?(to_square)
         to_square
       elsif en_passant?(from_square, to_square)
-        square_at(file_index(to_square),
-          rank_index(to_square,
-            increase: -1, color: color_on(from_square)))
+        en_passant_capture_square(from_square, to_square)
       end
 
-    record_move(from_square, to_square, captured_square:) unless hypothetical?
-    make_capture_at(captured_square) if captured_square
-    move_piece(from_square, to_square)
+    record_move(from_square, to_square, capture_square:) unless hypothetical?
+    make_capture_on(capture_square) if capture_square
+    relocate_piece(from_square, to_square)
 
     rotate_players unless hypothetical?
   end
 
-  def move_piece(from_square, to_square)
+  def record_move(from_square, to_square, capture_square: nil)
     piece = @contents[from_square]
-    @contents[to_square] = piece if to_square
-    piece&.square = to_square
+
+    capture = !capture_square.nil?
+    if capture
+      captured_piece = @contents[capture_square]
+      en_passant = capture_square != to_square
+    end
+
+    threatens = threatens_king?(from_square, to_square)
+    traps = traps_king?(from_square, to_square)
+    checkmate = threatens && traps
+    check = threatens && !traps
+    draw = traps && !threatens
+
+    @moves << {from_square:, to_square:, piece:,
+               capture:, captured_piece:, en_passant:,
+               check:, checkmate:, draw:}
+  end
+
+  def relocate_piece(from_square, to_square)
+    piece = @contents[from_square]
+
+    piece.square = to_square # = nil if piece is captured/removed
+
     @contents[from_square] = nil
+    @contents[to_square] = piece unless to_square.nil?
   end
 
-  def remove_piece(from_square)
-    move_piece(from_square, nil)
+  def make_capture_on(capture_square)
+    record_capture_on(capture_square) unless hypothetical?
+    clear_square(capture_square)
   end
 
-  def make_capture_at(captured_square)
-    record_capture_at(captured_square) unless hypothetical?
-    remove_piece(captured_square)
+  def clear_square(square)
+    relocate_piece(square, nil)
   end
 
-  def record_move(from_square, to_square, captured_square: nil)
-    case [threatens_king?(from_square, to_square), traps_king?(from_square, to_square)]
-    in [true, false] then check = true
-    in [true, true] then checkmate = true
-    in [false, true] then draw = true
-    else
-    end
-    piece = @contents[from_square]
-    if captured_square
-      captured_piece = @contents[captured_square]
-      capture = true
-      en_passant = true if captured_square != to_square
-    end
-    @moves << {from_square:, to_square:,
-                piece:, captured_piece:,
-                capture:, en_passant:,
-                check:, checkmate:, draw:}
-    # p @moves.last
-  end
-
-  def record_capture_at(captured_square)
-    @captures << @contents[captured_square]
+  def record_capture_on(capture_square)
+    @captures << @contents[capture_square]
   end
 
   def threatens_king?(from_square, to_square)
@@ -94,15 +94,14 @@ module Move
 
   def valid_move?(from_square, to_square)
     # assumed: both squares are on the board; from_square is correct color
-    mover = @contents[from_square]
-    target = @contents[to_square]
-    return false if color_on(to_square) == color_on(from_square)
+    piece = @contents[from_square]
+    return false if same_color?(from_square, to_square)
 
     return false if would_endanger_own_king?(from_square, to_square)
 
     return valid_attack?(from_square, to_square) if occupied?(to_square)
 
-    case mover
+    case piece
     when Pawn
       case file_shift(from_square, to_square).abs
       when 1
@@ -110,7 +109,7 @@ module Move
       when 0
         steps = rank_would_grow(from_square, to_square)
         allowed_steps = [1]
-        allowed_steps << 2 if mover.unmoved?
+        allowed_steps << 2 if piece.unmoved?
         allowed_steps.include?(steps) &&
           empty_between?(from_square, to_square)
       else false
@@ -156,15 +155,13 @@ module Move
   end
 
   def en_passant?(from_square, to_square)
-    captured_square = square_at(file_index(to_square),
-      rank_index(to_square,
-        increase: -1, color: color_on(from_square)))
+    capture_square = en_passant_capture_square(from_square, to_square)
 
-    if square_empty?(captured_square)
+    if square_empty?(capture_square)
       # invalid_reason = "the square you would capture is empty."
-    elsif color_on(from_square) == color_on(captured_square)
+    elsif same_color?(from_square, capture_square)
       # invalid_reason = "the square you would capture is your own color."
-    elsif @moves&.last&.[](:to_square) != captured_square
+    elsif @moves&.last&.[](:to_square) != capture_square
       # invalid_reason = "the square you would capture wasn't the last move's target."
     elsif @moves&.last&.[](:piece).class != Pawn
       # invalid_reason = "the last piece moved wasn't a Pawn."
@@ -208,11 +205,15 @@ module Move
   end
 
   def legal_moves(color: player.color)
+    conceivable_moves(color).filter do |from_square, to_square|
+      !would_endanger_own_king?(from_square, to_square)
+    end
+  end
+
+  def conceivable_moves(color: player.color)
     from_squares = squares_of(color:)
     from_squares.reduce([]) do |collected_moves, from_square|
-      to_squares = squares_reachable_from(from_square).filter do |to_square|
-        !would_endanger_own_king?(from_square, to_square)
-      end
+      to_squares = squares_reachable_from(from_square)
       collected_moves + [from_square].product(to_squares)
     end
   end

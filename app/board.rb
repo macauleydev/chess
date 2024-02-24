@@ -56,7 +56,7 @@ class Board
   def king_trapped?(color)
     raise "Invalid color #{color} (must be one of #{COLORS})" unless COLORS.include?(color)
 
-    legal_moves(color:).all? do |from_square, to_square|
+    conceivable_moves(color:).all? do |from_square, to_square|
       would_endanger_own_king?(from_square, to_square)
     end
   end
@@ -101,6 +101,14 @@ class Board
 
   def color_on(square)
     @contents[square]&.color
+  end
+
+  def same_color?(square1, square2)
+    color_on(square1) == color_on(square2)
+  end
+
+  def inverse_colors?(square1, square2)
+    color_on(square1) == inverse(color_on(square2))
   end
 
   def square_at(file_index, rank_index)
@@ -317,6 +325,12 @@ class Board
 
   def file_rank_index(square)
     [file_index(square), rank_index(square)]
+  end
+
+  def en_passant_capture_square(attacking_from_square, attacking_to_square)
+    square_at(file_index(attacking_to_square),
+      rank_index(attacking_to_square,
+        increase: -1, color: color_on(attacking_from_square)))
   end
 
   def to_s(active_squares: nil)
