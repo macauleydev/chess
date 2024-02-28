@@ -31,7 +31,7 @@ class Game
 
   def play_game
     loop do
-      from, to = get_valid_move
+      from, to = get_legal_move
       perform_move(from, to)
 
       if checkmate?
@@ -57,7 +57,7 @@ class Game
     show_board(active_squares: [to], duration:)
   end
 
-  def get_valid_move
+  def get_legal_move
     loop do
       show_board
       puts "Check!" if check?
@@ -79,7 +79,10 @@ class Game
       when "load"
         load_game
       end
-      return coordinates(input) if coordinates(input) && @board.valid_move?(*coordinates(input))
+      if move_indicated_by(input) &&
+          @board.legal_move_by_color?(*move_indicated_by(input), @board.player.color)
+        return move_indicated_by(input)
+      end
     end
   end
 
@@ -100,8 +103,8 @@ class Game
     moves = pgn_to_minimal_algebraic(pgn_game)
     initialize
     moves.each do |move|
-      from, to = coordinates(move)
-      # validate
+      from, to = move_indicated_by(move)
+      # legalate
       perform_move(from, to)
     end
     play_game
@@ -137,10 +140,9 @@ class Game
     sleep(duration)
   end
 
-  def coordinates(move_string, board: @board)
+  def move_indicated_by(move_string, board: @board)
     # Accepted formats: coordinates (b1c3) or minimal algebraic (Nc3)
     raise "Invalid input, #{move_string}: must be a string" unless move_string.is_a?(String)
-
     chars = move_string.chars
     to_square = chars.pop(2).join
     return nil if !board.square?(to_square) || chars.count > 3
@@ -156,16 +158,16 @@ class Game
       end
     elsif chars.count.zero?
       pawn_squares = board.squares_of(color: board.player.color, type: Pawn)
-      valid_from_squares = pawn_squares.filter do |pawn_square|
-        board.valid_move?(pawn_square, to_square)
+      legal_from_squares = pawn_squares.filter do |pawn_square|
+        board.legal_move?(pawn_square, to_square)
       end
-      from_square = valid_from_squares.one? ? valid_from_squares.first : nil
+      from_square = legal_from_squares.one? ? legal_from_squares.first : nil
     elsif chars.count == 1
       if Board::FILE_LETTERS.include?(specified_file_letter = chars.first)
         pawn_squares = board.squares_of(color: board.player.color, type: Pawn)
         from_squares = pawn_squares.filter do |pawn_square|
           actual_file_letter = board.file_letter(pawn_square)
-          board.valid_move?(pawn_square, to_square) &&
+          board.legal_move?(pawn_square, to_square) &&
             specified_file_letter == actual_file_letter
         end
         from_square = from_squares.one? ? from_squares.first : nil
@@ -173,30 +175,29 @@ class Game
       if from_square.nil?
         specified_piece_key = chars.first.upcase
         from_squares = board.squares_of(color: board.player.color)
-        valid_from_squares = from_squares.filter do |from_square|
-          board.valid_move?(from_square, to_square)
+        legal_from_squares = from_squares.filter do |from_square|
+          board.legal_move?(from_square, to_square)
         end
-        matching_from_squares = valid_from_squares.filter do |from_square|
+        matching_from_squares = legal_from_squares.filter do |from_square|
           actual_piece_key = board.contents[from_square]&.key
           specified_piece_key == actual_piece_key
         end
-        puts "Matching from squares: #{matching_from_squares}"
         from_square = matching_from_squares.one? ? matching_from_squares.first : nil
       end
     elsif chars.count == 2
       specified_piece_key = chars.first.upcase
       from_squares = board.squares_of(color: board.player.color)
-      valid_from_squares = from_squares.filter do |from_square|
-        board.valid_move?(from_square, to_square)
+      legal_from_squares = from_squares.filter do |from_square|
+        board.legal_move?(from_square, to_square)
       end
 
       if Board::FILE_LETTERS.include?(specified_file_letter = chars.last)
-        matching_from_squares = valid_from_squares.filter do |from_square|
+        matching_from_squares = legal_from_squares.filter do |from_square|
           actual_file_letter = board.file_letter(from_square)
           specified_file_letter == actual_file_letter
         end
       elsif Board::RANK_NAMES.include?(specified_rank_name = chars.last)
-        matching_from_squares = valid_from_squares.filter do |from_square|
+        matching_from_squares = legal_from_squares.filter do |from_square|
           actual_rank_name = board.rank_name(from_square)
           specified_rank_name == actual_rank_name
         end
@@ -220,8 +221,7 @@ class Game
         end
       end
       piece =
-        case move[:piece]
-        in Pawn
+        if move[:piece].is_a?(Pawn)
           move[:capture] ? @board.file_letter(move[:from_square]) : ""
         else
           move[:piece].key

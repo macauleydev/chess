@@ -49,6 +49,10 @@ class Board
     players[0]
   end
 
+  def last_movement
+    @moves&.last&.[](:movement)
+  end
+
   def rotate_players
     players.rotate!
   end
@@ -61,7 +65,7 @@ class Board
     end
   end
 
-  def inverse(color)
+  def color_opposing(color)
     raise "Invalid color #{color} (must be one of #{COLORS})" unless COLORS.include?(color)
 
     COLORS.find { _1 != color }
@@ -80,8 +84,8 @@ class Board
     raise "Invalid color #{color} (must be one of #{COLORS})" unless COLORS.include?(color)
 
     kings_square = kings_square(color)
-    opponents_squares = squares_of(color: inverse(color))
-    opponents_squares.any? { |opponents_square| valid_move?(opponents_square, kings_square) }
+    opponents_squares = squares_of(color: color_opposing(color))
+    opponents_squares.any? { |opponents_square| legal_move?(opponents_square, kings_square) }
   end
 
   def initial_contents(players)
@@ -103,12 +107,25 @@ class Board
     @contents[square]&.color
   end
 
-  def same_color?(square1, square2)
-    color_on(square1) == color_on(square2)
+  def opposing_colors?(color1, color2)
+    color1 == color_opposing(color2)
   end
 
-  def inverse_colors?(square1, square2)
-    color_on(square1) == inverse(color_on(square2))
+  def compatriot_squares?(square1, square2)
+    COLORS.include?(color_on(square1)) &&
+      color_on(square1) == color_on(square2)
+  end
+
+  def opposing_squares?(square1, square2)
+    opposing?(color_on(square1), color_on(square2))
+  end
+
+  def of_same_color?(p1, p2)
+    p1.color == p2.color
+  end
+
+  def of_opposing_colors?(p1, p2)
+    opposing_colors?(p1.color, p2.color)
   end
 
   def square_at(file_index, rank_index)
@@ -127,131 +144,192 @@ class Board
 
   def squares_between(from_square, to_square)
     raise "Invalid squares(s): #{from_square} and/or #{to_square}" unless all_square?(from_square, to_square)
+    return [] unless straight?(from_square, to_square) || diagonal?(from_square, to_square)
 
-    from_x, from_y = file_rank_index(from_square)
-    to_x, to_y = file_rank_index(to_square)
-    delta_x = to_x - from_x
-    delta_y = to_y - from_y
-    return [] unless [delta_x.abs, delta_y.abs] in [2..7, 0] | [0, 2..7] | [2..7 => _steps, ^_steps]
+    x_start, y_start = file_rank_index(from_square)
+    x_end, y_end = file_rank_index(to_square)
 
-    steps = [delta_x.abs, delta_y.abs].max
-    x_step = delta_x / steps
-    y_step = delta_y / steps
-    (1...steps).map do |i|
-      square_at(from_x + (i * x_step), from_y + (i * y_step))
+    total_x_delta = x_end - x_start
+    total_y_delta = y_end - y_start
+    total_steps = [total_x_delta.abs, total_y_delta.abs].max
+    x_step = total_x_delta / total_steps
+    y_step = total_y_delta / total_steps
+
+    (1...total_steps).map do |number_of_steps|
+      x_delta = x_step * number_of_steps
+      y_delta = y_step * number_of_steps
+      square_at(x_start + x_delta, y_start + y_delta)
     end
   end
 
   def squares_diagonal(from_square)
-    squares(from_square, directions: DIAGONAL_STEPS, step_counts: (1..7))
+    squares(from_square, step_types: DIAGONAL_STEPS, numbers_of_steps: (1..7))
   end
 
   def squares_straight(from_square)
-    squares(from_square, directions: STRAIGHT_STEPS, step_counts: (1..7))
+    squares(from_square, step_types: STRAIGHT_STEPS, numbers_of_steps: (1..7))
   end
 
   def squares_adjacent(from_square)
     squares(from_square,
-      directions: STRAIGHT_STEPS + DIAGONAL_STEPS,
-      step_counts: (1..1))
+      step_types: STRAIGHT_STEPS + DIAGONAL_STEPS,
+      numbers_of_steps: (1..1))
   end
 
-  def squares_front(from_square, step_counts: (1..1))
-    squares(from_square, directions: RANK_STEPS, step_counts:)
-      .filter { |to_square| rank_would_grow(from_square, to_square).positive? }
+  def square_forward(from_square, forward_steps = 1, color = color_on(from_square))
+    file_index = file_index(from_square)
+    direction = color.direction
+    rank_index = rank_index(from_square) + (forward_steps * direction)
+    return nil unless rank_index in 0..7
+    square_at(file_index, rank_index)
   end
 
-  def squares_front_diagonal(from_square)
-    squares(from_square, directions: DIAGONAL_STEPS, step_counts: (1..1))
-      .filter { |to_square| rank_would_grow(from_square, to_square).positive? }
+  def squares_forward_diagonal(from_square, forward_steps = 1)
+    left_file = file_index(from_square) - 1
+    right_file = file_index(from_square) + 1
+    forward_rank = rank_index(from_square) + forward_steps
+
+    index_pairs =
+      [[left_file, forward_rank],
+        [right_file, forward_rank]].filter { |indexes| indexes in [0..7, 0..7] }
+
+    squares = index_pairs.map { |file_index, rank_index| square_at(file_index, rank_index) }
+    puts "Squares forward diagonal from #{from_square}: #{squares}"
+    squares
+  end
+
+  def en_passant_capture_square(attack_from_square, attack_to_square)
+    attack_color = color_on(attack_from_square)
+    square_forward(attack_to_square, -1, attack_color)
   end
 
   def squares_knight_leap(from_square)
-    squares(from_square, directions: KNIGHT_LEAPS, step_counts: (1..1))
+    squares(from_square, step_types: KNIGHT_LEAPS, numbers_of_steps: (1..1))
   end
 
-  def squares(square, directions: nil, step_counts: (1..7))
+  def squares(square, step_types: nil, numbers_of_steps: (1..7))
     raise "Invalid square, #{square}" unless square?(square)
-    raise "Must specify an array of directions" unless directions in Array
+    raise "Must specify an array of step types" unless step_types in Array
 
     x, y = file_rank_index(square)
     squares = []
-    directions.each do |x_delta, y_delta|
-      step_counts.each do |step_count|
-        new_xy = [x + (x_delta * step_count), y + (y_delta * step_count)]
-        squares << square_at(*new_xy) if new_xy in [0..7, 0..7]
+    step_types.each do |x_step, y_step|
+      numbers_of_steps.each do |number_of_steps|
+        x_delta = x_step * number_of_steps
+        y_delta = y_step * number_of_steps
+        new_x, new_y = [x + x_delta, y + y_delta]
+        squares << square_at(new_x, new_y) if [new_x, new_y] in [0..7, 0..7]
       end
     end
     squares
   end
 
-  def squares_reachable_from(from_square)
+  def reachable_squares(from_square)
+    # Reachable: conceivable (even if it would endanger king)
     piece = @contents[from_square]
+    return false unless square?(from_square)
+    return false if piece.nil?
+
     case piece
-    when Pawn
-      max_steps = piece.unmoved? ? 2 : 1
-      step_moves = squares_front(from_square, step_counts: (1..max_steps)).filter do |to_square|
-        square_empty?(to_square) && empty_between?(from_square, to_square) && valid_move?(from_square, to_square)
+    when Pawn then pawn_reachable_squares(from_square)
+    when Bishop then bishop_reachable_squares(from_square)
+    when Rook then rook_reachable_squares(from_square)
+    when Queen then queen_reachable_squares(from_square)
+    when King then king_reachable_squares(from_square)
+    when Knight then knight_reachable_squares(from_square)
+    else
+      "unrecognized piece type"
+    end
+  end
+
+  def pawn_reachable_squares(pawn_square)
+    pawn = @contents[pawn_square]
+    square_one_forward = square_forward(pawn_square)
+    square_two_forward = square_forward(pawn_square, 2)
+
+    step_squares = []
+    step_squares << square_one_forward if unoccupied?(square_one_forward)
+    step_squares << square_two_forward if pawn.unmoved?
+
+    diagonal_squares =
+      squares_forward_diagonal(pawn_square, 1).filter do |to_square|
+        opponent_on?(to_square) || en_passant_attack?(pawn_square, to_square)
       end
-      attack_moves = squares_front_diagonal(from_square).filter do |to_square|
-        if !valid_move?(from_square, to_square)
-          false
-        elsif occupied?(to_square)
-          color_on(to_square) != piece.color
-        else
-          en_passant?(from_square, to_square)
-        end
-      end
-      step_moves + attack_moves
-    when Bishop
-      squares_diagonal(from_square).filter do |to_square|
-        color_on(to_square) != piece.color &&
-          empty_between?(from_square, to_square) && valid_move?(from_square, to_square)
-      end
-    when Rook
-      squares_straight(from_square).filter do |to_square|
-        color_on(to_square) != piece.color &&
-          empty_between?(from_square, to_square) && valid_move?(from_square, to_square)
-      end
-    when Queen
-      to_squares = squares_diagonal(from_square) + squares_straight(from_square)
-      to_squares.filter do |to_square|
-        color_on(to_square) != piece.color &&
-          empty_between?(from_square, to_square) && valid_move?(from_square, to_square)
-      end
-    when King
-      squares_adjacent(from_square).filter do |to_square|
-        color_on(to_square) != piece.color && valid_move?(from_square, to_square)
-      end
-    when Knight
-      squares_knight_leap(from_square).filter do |to_square|
-        color_on(to_square) != piece.color && valid_move?(from_square, to_square)
-      end
+
+    step_squares + diagonal_squares
+  end
+
+  def bishop_reachable_squares(bishop_square)
+    squares_diagonal(bishop_square).filter do |to_square|
+      path_clear?(bishop_square, to_square) &&
+        !compatriot_squares?(bishop_square, to_square)
+    end
+  end
+
+  def rook_reachable_squares(rook_square)
+    squares_straight(rook_square).filter do |to_square|
+      path_clear?(rook_square, to_square) &&
+        !compatriot_squares?(rook_square, to_square)
+    end
+  end
+
+  def queen_reachable_squares(queen_square)
+    to_squares = squares_diagonal(queen_square) + squares_straight(queen_square)
+    to_squares.filter do |to_square|
+      path_clear?(queen_square, to_square) &&
+        !compatriot_squares?(queen_square, to_square)
+    end
+  end
+
+  def king_reachable_squares(king_square)
+    squares_adjacent(king_square).filter do |to_square|
+      !compatriot_squares?(king_square, to_square)
+    end
+  end
+
+  def knight_reachable_squares(knight_square)
+    squares_knight_leap(knight_square).filter do |to_square|
+      !compatriot_squares?(knight_square, to_square)
     end
   end
 
   def pieces_reachable_from(from_square)
-    squares_reachable_from(from_square).map { |square| @contents[square] }
-  end
-
-  def square_empty?(square)
-    @contents[square].nil? && square?(square)
-  end
-
-  def squares_empty?(*squares)
-    squares.all? { |square| square_empty?(square) }
-  end
-
-  def empty_between?(from_square, to_square)
-    squares_empty?(*squares_between(from_square, to_square))
+    reachable_squares(from_square).map { |square| @contents[square] }
   end
 
   def occupied?(square)
+    raise "#{square} is not a square" unless square?(square)
     !@contents[square].nil?
+  end
+
+  def unoccupied?(square)
+    raise "#{square} is not a square" unless square?(square)
+    @contents[square].nil?
+  end
+
+  def path_clear?(from_square, to_square)
+    squares_between(from_square, to_square).all? { |square| unoccupied?(square) }
+  end
+
+  def path_blocked?(from_square, to_square)
+    squares_between(from_square, to_square).any? { |square| occupied?(square) }
+  end
+
+  def opponent_on?(square)
+    color_on(square) == (player.color)
+  end
+
+  def compatriot_on?(square)
+    color_on(square) == player.color
   end
 
   def piece_type_on(square)
     @contents[square]&.class
+  end
+
+  def opposing_pawn_on?(square)
+    puts "Opponent on #{square}? #{opponent_on?(square)}"
+    opponent_on?(square) && piece_type_on(square) == Pawn
   end
 
   def contents_of(color: nil, type: nil)
@@ -320,17 +398,12 @@ class Board
   end
 
   def rank_index(square, increase: 0, color: color_on(square) || White)
-    RANK_NAMES.find_index(rank_name(square)) + (increase * color.direction)
+    direction = color ? color.direction : 1
+    RANK_NAMES.find_index(rank_name(square)) + (increase * direction)
   end
 
   def file_rank_index(square)
     [file_index(square), rank_index(square)]
-  end
-
-  def en_passant_capture_square(attacking_from_square, attacking_to_square)
-    square_at(file_index(attacking_to_square),
-      rank_index(attacking_to_square,
-        increase: -1, color: color_on(attacking_from_square)))
   end
 
   def to_s(active_squares: nil)
