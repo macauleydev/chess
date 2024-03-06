@@ -94,47 +94,47 @@ RSpec.describe Board do
       end
     end
   end
-  context "when square is 'c5' (file index 2, rank index 4)" do
+  context "when analyzing square 'c5' (file index 2, rank index 4)" do
     subject(:board_square_names) { described_class.new }
     let(:square) { "c5" }
     let(:indexes) { [2, 4] }
 
-    describe "#file_letter(square)" do
+    describe "#file_letter" do
       subject(:file_letter) { board_square_names.file_letter(square) }
       it "is the String c" do
         expect(file_letter).to eql("c")
       end
     end
 
-    describe "#rank_number(square)" do
+    describe "#rank_number" do
       subject(:rank_number) { board_square_names.rank_number(square) }
       it "is the Integer 5" do
         expect(rank_number).to eql(5)
       end
     end
 
-    describe "#file_index(square)" do
+    describe "#file_index" do
       subject(:file_index) { board_square_names.file_index(square) }
       it "is 2" do
         expect(file_index).to eql(2)
       end
     end
 
-    describe "#rank_index(square)" do
+    describe "#rank_index" do
       subject(:rank_index) { board_square_names.rank_index(square) }
       it "is 4" do
         expect(rank_index).to eql(4)
       end
     end
 
-    describe "#file_rank_index(square)" do
+    describe "#file_rank_index" do
       subject(:file_rank_index) { board_square_names.file_rank_index(square) }
       it "is [2, 4]" do
         expect(file_rank_index).to eql([2, 4])
       end
     end
 
-    describe "#square_at(*indexes)" do
+    describe "#square_at(2, 4)" do
       subject(:square_at) { board_square_names.square_at(*indexes)}
       it "is c5" do
         expect(square_at).to eql("c5")
@@ -221,6 +221,65 @@ RSpec.describe Board do
         let(:args) { ["b5", 1, Black] }
         it "is b4" do
           expect(square_forward_custom).to eql("b4")
+        end
+      end
+    end
+  end
+
+  describe "#en_passant_capture_square" do
+    subject(:board_ep_capture) { described_class.new }
+    let(:ep_capture) { board_ep_capture.en_passant_capture_square(*args) }
+
+    context "with possible e.p. attack" do
+      context "g5 to h6 (White rightward)" do
+        let(:args) { ["g5", "h6"] }
+
+        it "is h5" do
+          expect(ep_capture).to eql("h5")
+        end
+      end
+      context "c4 to d3 (Black rightward)" do
+        let(:args) { ["c4", "d3"] }
+
+        it "is d4" do
+          expect(ep_capture).to eql("d4")
+        end
+      end
+      context "c4 to b3 (Black leftward)" do
+        let(:args) { ["c4", "b3"] }
+
+        it "is b4" do
+          expect(ep_capture).to eql("b4")
+        end
+      end
+    end
+    context "with impossible e.p. attack" do
+      context "b6 to a7 (White wrong rank)" do
+        let(:args) { %w[b6 a7] }
+
+        it "is nil" do
+          expect(ep_capture).to be_nil
+        end
+      end
+      context "f6 to e5 (Black wrong rank)" do
+        let(:args) { %w[f6 e5] }
+
+        it "is nil" do
+          expect(ep_capture).to be_nil
+        end
+      end
+      context "d5 to f7 (2 steps diagonal)" do
+        let(:args) { %w[d5 f7] }
+
+        it "is nil" do
+          expect(ep_capture).to be_nil
+        end
+      end
+      context "c5 to c6 (1 step straight)" do
+        let(:args) { %w[d4 f6] }
+
+        it "is nil" do
+          expect(ep_capture).to be_nil
         end
       end
     end

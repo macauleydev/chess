@@ -174,7 +174,10 @@ module Move
   end
 
   def en_passant_attack?(attack_from_square, attack_to_square)
-    return false unless occupied?(attack_from_square) && unoccupied?(attack_to_square)
+    return false unless
+      forward_diagonal_step?(attack_from_square, attack_to_square)
+    return false unless
+      occupied?(attack_from_square) && unoccupied?(attack_to_square)
 
     defense_color = color_opposing(color_on(attack_from_square))
 
@@ -223,11 +226,15 @@ module Move
   def knight_leap?(from_square, to_square) =
     KNIGHT_LEAPS.include?(file_rank_growth(from_square, to_square))
 
+  def forward_diagonal_step?(from_square, to_square, color = color_on(from_square) || White)
+    forward_steps(from_square, to_square, color) == 1 &&
+      side_steps(from_square, to_square) == 1
+  end
+
   def side_steps(from_square, to_square) =
     file_shift(from_square, to_square).abs
 
-  def forward_steps(from_square, to_square) =
-    rank_growth(from_square, to_square)
+  def forward_steps(from_square, to_square, color = color_on(from_square) || White) = rank_growth(from_square, to_square, color)
 
   def file_rank_growth(from_square, to_square) =
     [file_shift(from_square, to_square),
@@ -242,11 +249,10 @@ module Move
     to_file - from_file
   end
 
-  def rank_growth(from_square, to_square)
+  def rank_growth(from_square, to_square, color = color_on(from_square) || White)
     return unless square?(from_square) && square?(to_square)
 
-    direction = color_on(from_square).direction
     from_rank, to_rank = [from_square, to_square].map { rank_number(_1) }
-    (to_rank - from_rank) * direction
+    (to_rank - from_rank) * color.direction
   end
 end

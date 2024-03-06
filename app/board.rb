@@ -94,17 +94,28 @@ class Board
     "#{file_letter}#{rank_number}"
   end
 
-  def square_forward(from_square, forward_steps = 1, color = color_on(from_square))
+  def square_forward(from_square, forward_steps = 1, color = color_on(from_square) || White )
     file_index = file_index(from_square)
-    direction = color ? color.direction : 1
-    rank_index = rank_index(from_square) + (forward_steps * direction)
+    rank_index = rank_index(from_square) + (forward_steps * color.direction)
     return nil unless rank_index in 0..7
     square_at(file_index, rank_index)
   end
 
   def en_passant_capture_square(attack_from_square, attack_to_square)
-    attack_color = color_on(attack_from_square)
-    square_forward(attack_to_square, -1, attack_color)
+    if forward_diagonal_step?(attack_from_square, attack_to_square, White)
+      color = White
+    elsif forward_diagonal_step?(attack_from_square, attack_to_square, Black)
+      color = Black
+    else
+      return nil
+    end
+
+    starting_rank = rank_number(attack_from_square)
+    return nil unless
+      starting_rank == color.lowest_rank + (4 * color.direction)
+
+    ending_file = file_letter(attack_to_square)
+    "#{ending_file}#{starting_rank}"
   end
 
   def squares_forward_diagonal(from_square, forward_steps = 1)
