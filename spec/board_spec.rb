@@ -2,7 +2,7 @@ require "./app/board"
 
 RSpec.describe Board do
   describe "#initialize" do
-    context "when no contents are specified" do
+    context "when no contents are given" do
       subject(:board_initial_contents) { described_class.new }
 
       let(:contents) { board_initial_contents.contents }
@@ -58,8 +58,43 @@ RSpec.describe Board do
         expect(rank_3456_contents).to all(be_nil)
       end
     end
+    context "when random contents are given" do
+      subject(:board_random_contents) { described_class.new(contents: given_contents) }
+      let(:given_contents) do
+        contents = {}
+        [White, Black].each do |color|
+          Piece.subclasses.each do |piece_type|
+            square = ("a".."h").to_a.shuffle.first + ("1".."8").to_a.shuffle.first until contents[square].nil?
+            contents[square] = piece_type.new(color, [square])
+          end
+        end
+        contents
+      end
+      let(:actual_contents) { board_random_contents.contents }
+
+      it "preserves squares" do
+        actual_squares = actual_contents.keys
+        given_squares = given_contents.keys
+        expect(actual_squares).to eql(given_squares)
+      end
+      it "preserves piece types" do
+        actual_contents_types = actual_contents.transform_values(&:class)
+        given_contents_types = given_contents.transform_values(&:class)
+        expect(actual_contents_types).to eql(given_contents_types)
+      end
+      it "preserves piece colors" do
+        actual_contents_colors = actual_contents.transform_values(&:color)
+        given_contents_colors = given_contents.transform_values(&:color)
+        expect(actual_contents_colors).to eql(given_contents_colors)
+      end
+      it "preserves piece histories" do
+        actual_contents_histories = actual_contents.transform_values(&:squares_visited)
+        given_contents_histories = given_contents.transform_values(&:squares_visited)
+        expect(actual_contents_histories).to eql(given_contents_histories)
+      end
+    end
   end
-  context "when querying square 'c5' (file index 2, rank index 4)" do
+  context "when square is 'c5' (file index 2, rank index 4)" do
     subject(:board_square_names) { described_class.new }
     let(:square) { "c5" }
     let(:indexes) { [2, 4] }
