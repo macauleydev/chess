@@ -96,7 +96,7 @@ class Board
 
   def square_forward(from_square, forward_steps = 1, color = color_on(from_square))
     file_index = file_index(from_square)
-    direction = color.direction
+    direction = color ? color.direction : 1
     rank_index = rank_index(from_square) + (forward_steps * direction)
     return nil unless rank_index in 0..7
     square_at(file_index, rank_index)
