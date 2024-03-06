@@ -14,9 +14,7 @@ class Piece
     @squares_visited << square unless square == @square
   end
 
-  def square
-    @squares_visited.last
-  end
+  def square = @squares_visited.last
 
   def clone
     self.class.new(color, squares_visited)
