@@ -64,7 +64,7 @@ RSpec.describe Board do
         contents = {}
         [White, Black].each do |color|
           Piece.subclasses.each do |piece_type|
-            square = ("a".."h").to_a.shuffle.first + ("1".."8").to_a.shuffle.first until contents[square].nil?
+            square = ("a".."h").to_a.sample + ("1".."8").to_a.sample until contents[square].nil?
             contents[square] = piece_type.new(color, [square])
           end
         end
@@ -135,72 +135,72 @@ RSpec.describe Board do
     end
 
     describe "#square_at(2, 4)" do
-      subject(:square_at) { board_square_names.square_at(*indexes)}
+      subject(:square_at) { board_square_names.square_at(*indexes) }
       it "is c5" do
         expect(square_at).to eql("c5")
       end
     end
   end
 
-  describe "#square_forward" do
-    subject(:board_square_forward) { described_class.new }
+  describe "#square_ahead" do
+    subject(:board_square_ahead) { described_class.new }
     context "with default arguments" do
-      let(:square_forward_1) { board_square_forward.square_forward(from_square) }
+      let(:square_ahead_1) { board_square_ahead.square_ahead(from_square) }
       context "1 step from h2 (White)" do
         let(:from_square) { "h2" }
         it "is h3" do
-          expect(square_forward_1).to eql("h3")
+          expect(square_ahead_1).to eql("h3")
         end
       end
       context "1 step from a7 (Black)" do
         let(:from_square) { "a7" }
         it "is a6" do
-          expect(square_forward_1).to eql("a6")
+          expect(square_ahead_1).to eql("a6")
         end
       end
       context "1 step from e5 (empty)" do
         let(:from_square) { "e5" }
         it "is e6" do
-          expect(square_forward_1).to eql("e6")
+          expect(square_ahead_1).to eql("e6")
         end
       end
     end
     context "with custom arguments" do
-      let(:square_forward_custom) { board_square_forward.square_forward(*args) }
+      let(:square_ahead_custom) { board_square_ahead.square_ahead(*args) }
       context "2 steps from d2 (White)" do
         let(:args) { ["d2", 2] }
         it "is d4" do
-          expect(square_forward_custom).to eql("d4")
+          expect(square_ahead_custom).to eql("d4")
         end
       end
       context "2 steps from g7 (Black)" do
         let(:args) { ["g7", 2] }
         it "is g5" do
-          expect(square_forward_custom).to eql("g5")
+          expect(square_ahead_custom).to eql("g5")
         end
       end
       context "-1 step from d2 (White)" do
         let(:args) { ["d2", -1] }
         it "is d1" do
-          expect(square_forward_custom).to eql("d1")
+          expect(square_ahead_custom).to eql("d1")
         end
       end
       context "-1 step from g7 (Black)" do
         let(:args) { ["g7", -1] }
         it "is g8" do
-          expect(square_forward_custom).to eql("g8")
+          expect(square_ahead_custom).to eql("g8")
         end
       end
       context "-1 step from c1 (White)" do
         let(:args) { ["c1", -1] }
         it "is nil" do
-          expect(square_forward_custom).to be_nil
+          expect(square_ahead_custom).to be_nil
         end
       end
       context "1 White step from c7" do
         let(:args) { ["c7", 1, White] }
         it "is c8" do
-          expect(square_forward_custom).to eql("c8")
+          expect(square_ahead_custom).to eql("c8")
         end
       end
       context "-1 White step from d1" do
@@ -208,19 +208,19 @@ RSpec.describe Board do
         let(:steps) { -1 }
         let(:color) { White }
         it "is nil" do
-          expect(square_forward_custom).to be_nil
+          expect(square_ahead_custom).to be_nil
         end
       end
       context "2 Black steps from h2" do
         let(:args) { ["h2", 2, Black] }
         it "is nil" do
-          expect(square_forward_custom).to be_nil
+          expect(square_ahead_custom).to be_nil
         end
       end
       context "1 Black step from b5" do
         let(:args) { ["b5", 1, Black] }
         it "is b4" do
-          expect(square_forward_custom).to eql("b4")
+          expect(square_ahead_custom).to eql("b4")
         end
       end
     end
@@ -231,21 +231,21 @@ RSpec.describe Board do
     let(:ep_capture) { board_ep_capture.en_passant_capture_square(*args) }
 
     context "with possible e.p. attack" do
-      context "g5 to h6 (White rightward)" do
+      context "g5 to h6 (White right)" do
         let(:args) { ["g5", "h6"] }
 
         it "is h5" do
           expect(ep_capture).to eql("h5")
         end
       end
-      context "c4 to d3 (Black rightward)" do
+      context "c4 to d3 (Black right)" do
         let(:args) { ["c4", "d3"] }
 
         it "is d4" do
           expect(ep_capture).to eql("d4")
         end
       end
-      context "c4 to b3 (Black leftward)" do
+      context "c4 to b3 (Black left)" do
         let(:args) { ["c4", "b3"] }
 
         it "is b4" do
@@ -254,14 +254,14 @@ RSpec.describe Board do
       end
     end
     context "with impossible e.p. attack" do
-      context "b6 to a7 (White wrong rank)" do
+      context "b6 to a7 (wrong rank White)" do
         let(:args) { %w[b6 a7] }
 
         it "is nil" do
           expect(ep_capture).to be_nil
         end
       end
-      context "f6 to e5 (Black wrong rank)" do
+      context "f6 to e5 (wrong rank Black)" do
         let(:args) { %w[f6 e5] }
 
         it "is nil" do

@@ -182,8 +182,8 @@ module Move
     defense_color = color_opposing(color_on(attack_from_square))
 
     defense_square_passed_over = attack_to_square
-    defense_square_passed_from = square_forward(defense_square_passed_over, -1, defense_color)
-    defense_square_passed_to = square_forward(defense_square_passed_over, 1, defense_color)
+    defense_square_passed_from = square_ahead(defense_square_passed_over, -1, defense_color)
+    defense_square_passed_to = square_ahead(defense_square_passed_over, 1, defense_color)
 
     defense_passing_movement = [defense_square_passed_from, defense_square_passed_to]
     defense_passing_pawn = @contents[defense_square_passed_to]
@@ -214,31 +214,38 @@ module Move
     knight_leap?(knight_square, to_square)
   end
 
-  def straight?(from_square, to_square) =
-    [forward_steps(from_square, to_square), side_steps(from_square, to_square)].one?(0)
+  def straight?(square1, square2) =
+    [forward_steps(square1, square2), side_steps(square1, square2)].one?(0)
 
-  def diagonal?(from_square, to_square) =
-    file_rank_growth(from_square, to_square).map(&:abs) in [1..7 => _n, ^_n]
+  def diagonal?(square1, square2)
+    # file_rank_change(from_square, to_square).map(&:abs) in [1..7 => _n, ^_n]
+    return nil if square1 == square2
 
-  def adjacent?(from_square, to_square) =
-    ALL_STEPS.include?(file_rank_growth(from_square, to_square))
+    file_distance(square1, square2) == rank_distance(square1, square2)
+  end
 
-  def knight_leap?(from_square, to_square) =
-    KNIGHT_LEAPS.include?(file_rank_growth(from_square, to_square))
+  def adjacent?(square1, square2) =
+    ALL_STEPS.include?(file_rank_change(square1, square2))
+
+  def knight_leap?(square1, square2) =
+    KNIGHT_LEAPS.include?(file_rank_change(square1, square2))
 
   def forward_diagonal_step?(from_square, to_square, color = color_on(from_square) || White)
     forward_steps(from_square, to_square, color) == 1 &&
       side_steps(from_square, to_square) == 1
   end
 
-  def side_steps(from_square, to_square) =
-    file_shift(from_square, to_square).abs
+  def side_steps(square1, square2) =
+    file_distance(square1, square2)
 
-  def forward_steps(from_square, to_square, color = color_on(from_square) || White) = rank_growth(from_square, to_square, color)
+  def forward_steps(from_square, to_square, color = color_on(from_square) || White)
+    rank_increase(from_square, to_square, color)
+  end
 
-  def file_rank_growth(from_square, to_square) =
+  def file_rank_change(from_square, to_square, color = color_on(from_square) || White)
     [file_shift(from_square, to_square),
-      rank_growth(from_square, to_square)]
+      rank_increase(from_square, to_square, color)]
+  end
 
   private
 
@@ -249,10 +256,16 @@ module Move
     to_file - from_file
   end
 
-  def rank_growth(from_square, to_square, color = color_on(from_square) || White)
+  def file_distance(square1, square2) =
+    file_shift(square1, square2).abs
+
+  def rank_increase(from_square, to_square, color = color_on(from_square) || White)
     return unless square?(from_square) && square?(to_square)
 
-    from_rank, to_rank = [from_square, to_square].map { rank_number(_1) }
+    from_rank, to_rank = [from_square, to_square].map { |sq| rank_number(sq) }
     (to_rank - from_rank) * color.direction
   end
+
+  def rank_distance(square1, square2) =
+    rank_increase(square1, square2).abs
 end
