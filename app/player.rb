@@ -1,5 +1,4 @@
-require_relative "piece"
-require_relative "color"
+# require_relative "color"
 
 class Player
   def initialize(color)

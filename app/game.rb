@@ -1,10 +1,7 @@
+require "paint"
 require_relative "board"
-require_relative "color"
 require_relative "input"
-require_relative "move"
 require_relative "notation"
-require_relative "piece"
-require_relative "player"
 
 class Game
   include Input

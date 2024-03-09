@@ -1,4 +1,4 @@
-require_relative "color"
+# require_relative "color"
 
 class Piece
   def initialize(color, squares_visited)

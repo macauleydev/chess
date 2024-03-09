@@ -1,4 +1,6 @@
 module Display
+  require "paint"
+
   def square_background
     dark, light = ["#cc7c2b", "#e8a869"]
     dark_active, light_active = ["#a09512", "#c3bb62"]
@@ -24,7 +26,7 @@ module Display
   end
 
   def rank_to_s(rank_number, active_squares: nil, labels_hidden: false)
-    board_row = Board::FILE_LETTERS.map do |file_letter|
+    board_row = Square::FILE_LETTERS.map do |file_letter|
       square = "#{file_letter}#{rank_number}"
       active = active_squares&.include?(square)
       square_to_s(square, active:)
@@ -35,7 +37,7 @@ module Display
 
   def to_s(active_squares: nil, labels_hidden: false)
     labels_top = file_labels(labels_hidden:)[:top]
-    board_rows = Board::RANK_NUMBERS.reverse_each.reduce("") do |top_of_board, rank_number|
+    board_rows = Square::RANK_NUMBERS.reverse_each.reduce("") do |top_of_board, rank_number|
       top_of_board + rank_to_s(rank_number, active_squares:, labels_hidden:)
     end
     labels_bottom = file_labels(labels_hidden:)[:bottom]
@@ -56,7 +58,7 @@ module Display
   def fg_faded = "#777777"
 
   def file_labels(labels_hidden: false)
-    labels = "#{painted_label(Board::FILE_LETTERS.to_a.join(" "), labels_hidden:)} "
+    labels = "#{painted_label(Square::FILE_LETTERS.to_a.join(" "), labels_hidden:)} "
     left_space = hidden(rank_labels(1)[:left])
     right_space = hidden(rank_labels(1)[:right])
     labels_row = "#{left_space}#{labels}#{right_space}\n"
