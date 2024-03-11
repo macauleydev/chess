@@ -1,6 +1,19 @@
 module Display
   require "paint"
 
+  def to_s(active_squares: nil, labels_hidden: false)
+    labels_top = file_labels(labels_hidden:)[:top]
+    board_rows = RANK_NUMBERS.reverse_each.reduce("") do |top_of_board, rank_number|
+      top_of_board + rank_to_s(rank_number, active_squares:, labels_hidden:)
+    end
+    labels_bottom = file_labels(labels_hidden:)[:bottom]
+    labels_top + board_rows + labels_bottom
+  end
+
+  def fg_faded = "#777777"
+
+  private
+
   def square_background
     dark, light = ["#cc7c2b", "#e8a869"]
     dark_active, light_active = ["#a09512", "#c3bb62"]
@@ -17,16 +30,13 @@ module Display
       in [false, true] then square_background[:light_active]
       end
     piece = @contents[square]
-    fg = piece&.color&.color_code
-    symbol = piece&.symbol || " "
-    if piece && check? && square == kings_square(player.color)
-      symbol = piece.symbol_alt
-    end
-    Paint["#{symbol} ", fg, bg]
+    fg = piece&.color_code
+    symbol = piece&.symbol
+    Paint["#{symbol || " "} ", fg, bg]
   end
 
   def rank_to_s(rank_number, active_squares: nil, labels_hidden: false)
-    board_row = Square::FILE_LETTERS.map do |file_letter|
+    board_row = FILE_LETTERS.map do |file_letter|
       square = "#{file_letter}#{rank_number}"
       active = active_squares&.include?(square)
       square_to_s(square, active:)
@@ -35,18 +45,9 @@ module Display
     "#{rank_labels[:left]}#{board_row}#{rank_labels[:right]}\n"
   end
 
-  def to_s(active_squares: nil, labels_hidden: false)
-    labels_top = file_labels(labels_hidden:)[:top]
-    board_rows = Square::RANK_NUMBERS.reverse_each.reduce("") do |top_of_board, rank_number|
-      top_of_board + rank_to_s(rank_number, active_squares:, labels_hidden:)
-    end
-    labels_bottom = file_labels(labels_hidden:)[:bottom]
-    labels_top + board_rows + labels_bottom
-  end
-
   def painted_label(label, labels_hidden: false)
     label = label.to_s if label.is_a?(Integer)
-    hidden(label) if labels_hidden
+    label = hidden(label) if labels_hidden
     Paint[label, fg_faded]
   end
 
@@ -55,10 +56,8 @@ module Display
     plain_string.replace(" " * plain_string.length)
   end
 
-  def fg_faded = "#777777"
-
   def file_labels(labels_hidden: false)
-    labels = "#{painted_label(Square::FILE_LETTERS.to_a.join(" "), labels_hidden:)} "
+    labels = "#{painted_label(FILE_LETTERS.to_a.join(" "), labels_hidden:)} "
     left_space = hidden(rank_labels(1)[:left])
     right_space = hidden(rank_labels(1)[:right])
     labels_row = "#{left_space}#{labels}#{right_space}\n"

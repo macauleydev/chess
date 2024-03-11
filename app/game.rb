@@ -1,5 +1,9 @@
 require "paint"
+
+# Classes:
 require_relative "board"
+
+# Modules:
 require_relative "input"
 require_relative "notation"
 
@@ -20,9 +24,9 @@ class Game
   def introduce_game
     show_board(labels_hidden: true)
     puts "  Terminal Chess!"
-    puts faded("  powered by Ruby")
+    puts faded "  powered by Ruby"
     gets
-    puts faded("If the chess pieces are hard to see,")
+    puts faded "If the chess pieces are hard to see,"
     puts "#{faded "hold your keyboard's"} Cmd #{faded "or"} Ctrl #{faded "key"}"
     puts "#{faded "and type"} = #{faded "(+) or"} - #{faded "to zoom in or out."}"
     gets
@@ -37,24 +41,24 @@ class Game
     end
   end
 
-  def finish_game
-    raise "Game ended unexpectedly (no checkmate or draw)" unless checkmate? || draw?
+  def game_over? = @board.checkmate? || @board.draw?
 
+  def finish_game
     show_board
-    puts checkmate? ? "Checkmate!" : "Draw."
+    puts @board.checkmate? ? "Checkmate!" : "Draw."
     gets
     menu = {"Y" => :save_game_and_exit, "N" => :exit}
     command_prompt("Save completed game (Y/N)? ", menu)
   end
 
   def show_board(active_squares: [], duration: 0, labels_hidden: false)
-    system("clear") || system("cls")
-    puts "#{to_s(highlight: true)}\n\n"
+    game_notation = self
+    chessboard = @board.to_s(active_squares:, labels_hidden:)
 
-    original_setting = @board.labels_hidden
-    @board.labels_hidden = labels_hidden
-    puts @board.to_s(active_squares:, labels_hidden:)
-    @board.labels_hidden = original_setting
+    clear_terminal
+    puts game_notation
+    puts
+    puts chessboard
 
     sleep(duration)
   end
@@ -75,7 +79,7 @@ class Game
   end
 
   def maybe_show_check
-    puts "Check!" if check?
+    puts "Check!" if @board.check?
   end
 
   def maybe_show_help
@@ -128,13 +132,9 @@ class Game
     show_board(active_squares: [to], duration:)
   end
 
-  def check? = @board.moves&.last&.[](:check)
-
-  def checkmate? = @board.moves&.last&.[](:checkmate)
-
-  def draw? = @board.moves&.last&.[](:draw)
-
-  def game_over? = checkmate? || draw?
+  def clear_terminal
+    system("clear") || system("cls")
+  end
 
   def faded(string) = Paint[string, @board.fg_faded]
 end

@@ -1,8 +1,8 @@
-# require_relative "color"
-
 class Piece
-  def initialize(color, squares_visited)
+  def initialize(color, board, squares_visited)
     @color = color
+    @color_code = color&.color_code
+    @board = board
     @squares_visited = squares_visited.clone
   end
 
@@ -17,77 +17,65 @@ class Piece
   def square = @squares_visited.last
 
   def clone
-    self.class.new(color, squares_visited)
+    self.class.new(color, board, squares_visited)
   end
 
-  def self.input_key
-    @@input_key || @@key
-  end
-
-  def self.output_key
-    @@output_key || @@key
-  end
-
-  def self.key
-    @@key || @@output_key || @@input_key
-  end
-
-  @@key = @@input_key = @@output_key = nil
-  attr_reader :color, :squares_visited, :name, :key, :symbol, :symbol_alt
+  attr_reader :color, :color_code, :board, :squares_visited, :name, :key, :symbol
 end
 
 class Pawn < Piece
-  def initialize(color, squares_visited)
+  def initialize(color, board, squares_visited)
     super
     @name = "pawn"
-    @@input_key = @key = "P"
-    @@output_key = ""
+    @key = "P"
     @symbol = "\u265F"
   end
 end
 
 class Rook < Piece
-  def initialize(color, squares_visited)
+  def initialize(color, board, squares_visited)
     super
     @name = "rook"
-    @@key = @key = "R"
+    @key = "R"
     @symbol = "\u265C"
   end
 end
 
 class Knight < Piece
-  def initialize(color, squares_visited)
+  def initialize(color, board, squares_visited)
     super
     @name = "knight"
-    @@key = @key = "N"
+    @key = "N"
     @symbol = "\u265E"
   end
 end
 
 class Bishop < Piece
-  def initialize(color, squares_visited)
+  def initialize(color, board, squares_visited)
     super
     @name = "bishop"
-    @@key = @key = "B"
+    @key = "B"
     @symbol = "\u265D"
   end
 end
 
-class King < Piece
-  def initialize(color, squares_visited)
+class Queen < Piece
+  def initialize(color, board, squares_visited)
     super
-    @name = "king"
-    @@key = @key = "K"
-    @symbol = "\u265A"
-    @symbol_alt = "\u2654"
+    @name = "queen"
+    @key = "Q"
+    @symbol = "\u265B"
   end
 end
 
-class Queen < Piece
-  def initialize(color, squares_visited)
+class King < Piece
+  def initialize(color, board, squares_visited)
     super
-    @name = "queen"
-    @@key = @key = "Q"
-    @symbol = "\u265B"
+    @name = "king"
+    @key = "K"
+  end
+
+  def symbol
+    @board.check? ? "\u2654" : "\u265A"
   end
 end

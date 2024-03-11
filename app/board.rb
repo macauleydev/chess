@@ -1,23 +1,45 @@
+Color = Data.define(:name, :color_code, :lowest_rank, :direction)
+White = Color.new("White", "#ffffff", 1, 1)
+Black = Color.new("Black", "#000000", 8, -1)
+
+# Classes:
 require_relative "player"
 require_relative "piece"
-require_relative "color"
+
+# Modules:
+require_relative "geometry"
 require_relative "display"
-require_relative "square"
 require_relative "explore"
 require_relative "plan"
 require_relative "judge"
 require_relative "move"
 
 class Board
-  include Color
+  include Geometry
   include Display
-  include Square
   include Explore
   include Plan
   include Judge
   include Move
 
-  PIECE_TYPES = Piece.subclasses
+  def initialize(players: new_players, contents: {}, moves: [], captures: [], real: true)
+    @players = players
+    @contents = contents.empty? ? initial_contents :
+        contents.clone.transform_values(&:clone)
+    @moves = moves.empty? ? moves : moves.clone
+    @captures = captures.empty? ? captures : captures.clone
+    @real = real
+    @label_files = {top: false, bottom: true}
+    @label_ranks = {left: true, right: false}
+  end
+  attr_reader :players, :contents, :moves, :captures
+
+  def new_players = [Player.new(White), Player.new(Black)]
+
+  def player = players[0]
+
+  private def rotate_players = players.rotate!
+
   INITIAL_FILES = {
     Pawn => %w[a b c d e f g h],
     Rook => %w[a h], Knight => %w[b g], Bishop => %w[c f],
@@ -28,41 +50,55 @@ class Board
     Rook => 0, Knight => 0, Bishop => 0, Queen => 0, King => 0
   }.freeze
 
-  def initialize(players: [Player.new(White), Player.new(Black)],
-    contents: {}, moves: [], captures: [], real: true)
-    @players = players
-    @contents = contents.empty? ? initial_contents(players) :
-        contents.clone.transform_values(&:clone)
-    @moves = moves.empty? ? moves : moves.clone
-    @captures = captures.empty? ? captures : captures.clone
-    @real = real
-    @label_files = {top: false, bottom: true}
-    @label_ranks = {left: true, right: false}
-  end
-  attr_accessor :labels_hidden
-  attr_reader :contents, :moves, :players, :captures
-
-  def player = players[0]
-
-  def rotate_players = players.rotate!
-
-  def last_movement = @moves&.last&.[](:movement)
-
-  def check? = @moves&.last&.[](:check)
-
-  def initial_contents(players)
+  def initial_contents
     contents = {}
-    players.each do |player|
-      color = player.color
-      PIECE_TYPES.each do |piece_type|
+    [White, Black].each do |color|
+      Piece.subclasses.each do |piece_type|
         rank = color.lowest_rank + (color.direction * INITIAL_RANK_OFFSET[piece_type])
         INITIAL_FILES[piece_type].each do |file|
           square = "#{file}#{rank}"
-          contents[square] = piece_type.new(color, [square])
+          contents[square] = piece_type.new(color, self, [square])
         end
       end
     end
     contents
+  end
+
+  def check? = @moves&.last&.[](:check)
+
+  def checkmate? = @moves&.last&.[](:checkmate)
+
+  def draw? = @moves&.last&.[](:draw)
+
+  private
+
+  def last_movement = @moves&.last&.[](:movement)
+
+  def square(from_square, file_shift, rank_increase, color = color_on(from_square) || White)
+    file_index = file_index(from_square) + file_shift
+    rank_index = rank_index(from_square) + (rank_increase * color.direction)
+    square_at(file_index, rank_index)
+  end
+
+  def occupied?(square) = !@contents[square].nil?
+
+  def unoccupied?(square) = @contents[square].nil?
+
+  def color_on(square) = @contents[square]&.color
+
+  def compatriot_squares?(square1, square2)
+    color_on(square1) &&
+      color_on(square1) == color_on(square2)
+  end
+
+  def opposing_squares?(square1, square2)
+    color1, color2 = [color_on(square1), color_on(square2)]
+    [color1, color2] in [White, Black] | [Black, White]
+  end
+
+  def color_opposing(color)
+    return unless [White, Black].include?(color)
+    [White, Black].find { _1 != color }
   end
 
   ################# Methods for potential future use: ####################

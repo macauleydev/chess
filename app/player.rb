@@ -1,5 +1,3 @@
-# require_relative "color"
-
 class Player
   def initialize(color)
     @color = color
@@ -7,5 +5,5 @@ class Player
     @direction = color.direction
     @color_code = color.color_code
   end
-  attr_reader :name, :color
+  attr_reader :name, :color, :color_code
 end

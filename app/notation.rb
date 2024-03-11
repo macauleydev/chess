@@ -1,5 +1,8 @@
+require_relative "geometry"
+
 module Notation
-  def to_s(highlight: false)
+  include Geometry
+  def to_s(highlight: true)
     game_notation = @board.moves.each_with_index.reduce("") do |game, (move, index)|
       if index.even?
         # newline = "\n" if index.positive?
@@ -11,7 +14,7 @@ module Notation
       end
       piece =
         if move[:piece].is_a?(Pawn)
-          move[:capture] ? @board.file_letter(move[:from_square]) : ""
+          move[:capture] ? file_letter(move[:from_square]) : ""
         else
           move[:piece].key
         end
@@ -30,9 +33,10 @@ module Notation
     game_notation.strip
   end
 
+  private
+
   def save_game_and_exit
-    # puts faded(self)
-    saved_game = self
+    saved_game = to_s(highlight: false)
     filename = "saved_game.pgn"
     File.open(filename, "w") do |file|
       file.puts saved_game
@@ -69,9 +73,9 @@ module Notation
     raise "Invalid input, #{move_string}: must be a string" unless move_string.is_a?(String)
     chars = move_string.chars
     to_square = chars.pop(2).join
-    return nil if !board.square?(to_square) || chars.count > 3
+    return nil if !square?(to_square) || chars.count > 3
 
-    if board.square?(chars.last(2).join)
+    if square?(chars.last(2).join)
       from_square = chars.pop(2).join
       return nil if chars.count > 1
 
@@ -87,10 +91,10 @@ module Notation
       end
       from_square = legal_from_squares.one? ? legal_from_squares.first : nil
     elsif chars.count == 1
-      if Board::FILE_LETTERS.include?(specified_file_letter = chars.first)
+      if FILE_LETTERS.include?(specified_file_letter = chars.first)
         pawn_squares = board.squares_of(color: board.player.color, type: Pawn)
         from_squares = pawn_squares.filter do |pawn_square|
-          actual_file_letter = board.file_letter(pawn_square)
+          actual_file_letter = file_letter(pawn_square)
           board.legal_move?(pawn_square, to_square) &&
             specified_file_letter == actual_file_letter
         end
@@ -115,14 +119,14 @@ module Notation
         board.legal_move?(from_square, to_square)
       end
 
-      if Board::FILE_LETTERS.include?(specified_file_letter = chars.last)
+      if FILE_LETTERS.include?(specified_file_letter = chars.last)
         matching_from_squares = legal_from_squares.filter do |from_square|
-          actual_file_letter = board.file_letter(from_square)
+          actual_file_letter = file_letter(from_square)
           specified_file_letter == actual_file_letter
         end
-      elsif Board::RANK_NAMES.include?(specified_rank_name = chars.last)
+      elsif RANK_NAMES.include?(specified_rank_name = chars.last)
         matching_from_squares = legal_from_squares.filter do |from_square|
-          actual_rank_name = board.rank_name(from_square)
+          actual_rank_name = rank_name(from_square)
           specified_rank_name == actual_rank_name
         end
       end

@@ -52,7 +52,7 @@ RSpec.describe Board do
         expect(rank_7_8_pieces).to all(have_attributes(color: Black))
       end
 
-      it "sets no pieces on ranks 3,4,5,6" do
+      it "sets no pieces on ranks 3, 4, 5, and 6" do
         rank_3456_squares = (3..6).flat_map { |r| squares_in_rank[r] }
         rank_3456_contents = contents.values_at(*rank_3456_squares)
         expect(rank_3456_contents).to all(be_nil)
@@ -60,12 +60,13 @@ RSpec.describe Board do
     end
     context "when random contents are given" do
       subject(:board_random_contents) { described_class.new(contents: given_contents) }
+      let(:board_stub) { double(Board) }
       let(:given_contents) do
         contents = {}
         [White, Black].each do |color|
           Piece.subclasses.each do |piece_type|
             square = ("a".."h").to_a.sample + ("1".."8").to_a.sample until contents[square].nil?
-            contents[square] = piece_type.new(color, [square])
+            contents[square] = piece_type.new(color, board_stub, [square])
           end
         end
         contents
@@ -94,47 +95,41 @@ RSpec.describe Board do
       end
     end
   end
-  context "when analyzing square 'c5'" do
-    subject(:board_square_names) { described_class.new }
-    let(:square) { "c5" }
-    let(:indexes) { [2, 4] }
 
-    describe "#file_letter" do
-      subject(:file_letter) { board_square_names.file_letter(square) }
-      it "is the String c" do
-        expect(file_letter).to eql("c")
-      end
-    end
+  # Private method, so tests are unnecessary:
+  # context "when analyzing square 'c5'" do
+  #   subject(:board_square_names) { described_class.new }
+  #   let(:square) { "c5" }
+  #   let(:indexes) { [2, 4] }
 
-    describe "#rank_number" do
-      subject(:rank_number) { board_square_names.rank_number(square) }
-      it "is the Integer 5" do
-        expect(rank_number).to eql(5)
-      end
-    end
+  #   describe "#file_letter" do
+  #     subject(:file_letter) { board_square_names.file_letter(square) }
+  #     it "is the String c" do
+  #       expect(file_letter).to eql("c")
+  #     end
+  #   end
 
-    describe "#file_index" do
-      subject(:file_index) { board_square_names.file_index(square) }
-      it "is 2" do
-        expect(file_index).to eql(2)
-      end
-    end
+  #   describe "#rank_number" do
+  #     subject(:rank_number) { board_square_names.rank_number(square) }
+  #     it "is the Integer 5" do
+  #       expect(rank_number).to eql(5)
+  #     end
+  #   end
 
-    describe "#rank_index" do
-      subject(:rank_index) { board_square_names.rank_index(square) }
-      it "is 4" do
-        expect(rank_index).to eql(4)
-      end
-    end
+  #   describe "#file_index" do
+  #     subject(:file_index) { board_square_names.file_index(square) }
+  #     it "is 2" do
+  #       expect(file_index).to eql(2)
+  #     end
+  #   end
 
-    # Private method so tests are unnecessary:
-    # describe "#square_at(2, 4)" do
-    #   subject(:square_at) { board_square_names.square_at(*indexes) }
-    #   it "is c5" do
-    #     expect(square_at).to eql("c5")
-    #   end
-    # end
-  end
+  #   describe "#rank_index" do
+  #     subject(:rank_index) { board_square_names.rank_index(square) }
+  #     it "is 4" do
+  #       expect(rank_index).to eql(4)
+  #     end
+  #   end
+  # end
 
   describe "#square?" do
     subject(:board_square?) { described_class.new }
@@ -182,206 +177,93 @@ RSpec.describe Board do
     end
   end
 
-  # # Private method so tests are unnecessary:
-  # describe "#square" do
-  #   subject(:board_square) { described_class.new }
-  #   let(:square) { board_square.square(*args) }
-  #   context "with automatic color" do
-  #     context "from h2 (White) by -7, 6" do
-  #       let(:args) { ["h2", -7, 6] }
-  #       it "is a8" do
-  #         expect(square).to eq("a8")
+  # Private method, so tests are unnecessary:
+  # describe "#square_ahead" do
+  #   subject(:board_square_ahead) { described_class.new }
+  #   context "with default arguments" do
+  #     let(:square_ahead_1) { board_square_ahead.square_ahead(from_square) }
+  #     context "of h2 (White)" do
+  #       let(:from_square) { "h2" }
+  #       it "is h3" do
+  #         expect(square_ahead_1).to eql("h3")
   #       end
   #     end
-  #     context "from b1 (White) by 6, 7" do
-  #       let(:args) { ["b1", 6, 7] }
-  #       it "is h8" do
-  #         expect(square).to eq("h8")
+  #     context "of a7 (Black)" do
+  #       let(:from_square) { "a7" }
+  #       it "is a6" do
+  #         expect(square_ahead_1).to eql("a6")
   #       end
   #     end
-  #     context "from c7 (Black) by 5, 3" do
-  #       let(:args) { ["c7", 5, 3] }
-  #       it "is h4" do
-  #         expect(square).to eq("h4")
-  #       end
-  #     end
-  #     context "from f6 (empty) by -2, -1" do
-  #       let(:args) { ["f6", -2, -1] }
-  #       it "is d5" do
-  #         expect(square).to eq("d5")
+  #     context "of e5 (empty)" do
+  #       let(:from_square) { "e5" }
+  #       it "is e6" do
+  #         expect(square_ahead_1).to eql("e6")
   #       end
   #     end
   #   end
-  #   context "with custom color" do
-  #     context "from e8 (Black) by 2, -4 White" do
-  #       let(:args) { ["e8", 2, -4, White] }
-  #       it "is g4" do
-  #         expect(square).to eq("g4")
+  #   context "with custom argument(s)" do
+  #     let(:square_ahead_custom) { board_square_ahead.square_ahead(*args) }
+  #     context "of d2 (White), 2 steps" do
+  #       let(:args) { ["d2", 2] }
+  #       it "is d4" do
+  #         expect(square_ahead_custom).to eql("d4")
   #       end
   #     end
-  #     context "from a4 (empty) by 0, 3 Black" do
-  #       let(:args) { ["a4", 0, 3, Black] }
-  #       it "is a1" do
-  #         expect(square).to eq("a1")
+  #     context "of g7 (Black), 2 steps" do
+  #       let(:args) { ["g7", 2] }
+  #       it "is g5" do
+  #         expect(square_ahead_custom).to eql("g5")
   #       end
   #     end
-
-  #   end
-  #   context "leading off board" do
-  #     context "from g2 (White) by 2, 3" do
-  #       let(:args) { ["g2", 2, 3] }
-  #       it "is nil" do
-  #         expect(square).to be_nil
+  #     context "of d2 (White), -1 step" do
+  #       let(:args) { ["d2", -1] }
+  #       it "is d1" do
+  #         expect(square_ahead_custom).to eql("d1")
   #       end
   #     end
-  #     context "from f7 (Black) by -3, 7" do
-  #       let(:args) { ["f7", -3, 7] }
-  #       it "is nil" do
-  #         expect(square).to be_nil
+  #     context "of g7 (Black), -1 step" do
+  #       let(:args) { ["g7", -1] }
+  #       it "is g8" do
+  #         expect(square_ahead_custom).to eql("g8")
   #       end
   #     end
-  #   end
-  # end
-
-  # Private method so tests are unnecessary:
-  # describe "#square_at" do
-  #   subject(:board_square_at) { described_class.new }
-  #   let(:square_at) { board_square_at.square_at(*args) }
-
-  #   context "when in range (0..7)" do
-  #     context "7, 0" do
-  #       let(:args) { [7, 0] }
-  #       it "is h1" do
-  #         expect(square_at).to eq("h1")
+  #     context "of c7, 1 White step" do
+  #       let(:args) { ["c7", 1, White] }
+  #       it "is c8" do
+  #         expect(square_ahead_custom).to eql("c8")
   #       end
   #     end
-  #     context "0, 7" do
-  #       let(:args) { [0, 7] }
-  #       it "is a8" do
-  #         expect(square_at).to eq("a8")
-  #       end
-  #     end
-  #     context "4, 2" do
-  #       let(:args) { [4, 2] }
-  #       it "is e3" do
-  #         expect(square_at).to eq("e3")
+  #     context "of b5, 1 Black step" do
+  #       let(:args) { ["b5", 1, Black] }
+  #       it "is b4" do
+  #         expect(square_ahead_custom).to eql("b4")
   #       end
   #     end
   #   end
-  #   context "when out of range" do
-  #     context "8, 3" do
-  #       let(:args) { [8, 3] }
+  #   context "when leading off board" do
+  #     let(:square_ahead_extreme) { board_square_ahead.square_ahead(*args) }
+  #     context "of c1 (White), -1 step" do
+  #       let(:args) { ["c1", -1] }
   #       it "is nil" do
-  #         expect(square_at).to be_nil
+  #         expect(square_ahead_extreme).to be_nil
   #       end
   #     end
-  #     context "1, 8" do
-  #       let(:args) { [1, 8] }
+  #     context "of d1, -1 White step" do
+  #       let(:args) { ["d1", -1, White] }
+  #       let(:steps) { -1 }
+  #       let(:color) { White }
   #       it "is nil" do
-  #         expect(square_at).to be_nil
+  #         expect(square_ahead_extreme).to be_nil
   #       end
   #     end
-  #     context "-1, 2" do
-  #       let(:args) { [-1, 2] }
+  #     context "of h2, 2 Black steps" do
+  #       let(:args) { ["h2", 2, Black] }
   #       it "is nil" do
-  #         expect(square_at).to be_nil
-  #       end
-  #     end
-  #     context "4, -1" do
-  #       let(:args) { [4, -1] }
-  #       it "is nil" do
-  #         expect(square_at).to be_nil
+  #         expect(square_ahead_extreme).to be_nil
   #       end
   #     end
   #   end
   # end
-
-  describe "#square_ahead" do
-    subject(:board_square_ahead) { described_class.new }
-    context "with default arguments" do
-      let(:square_ahead_1) { board_square_ahead.square_ahead(from_square) }
-      context "of h2 (White)" do
-        let(:from_square) { "h2" }
-        it "is h3" do
-          expect(square_ahead_1).to eql("h3")
-        end
-      end
-      context "of a7 (Black)" do
-        let(:from_square) { "a7" }
-        it "is a6" do
-          expect(square_ahead_1).to eql("a6")
-        end
-      end
-      context "of e5 (empty)" do
-        let(:from_square) { "e5" }
-        it "is e6" do
-          expect(square_ahead_1).to eql("e6")
-        end
-      end
-    end
-    context "with custom argument(s)" do
-      let(:square_ahead_custom) { board_square_ahead.square_ahead(*args) }
-      context "of d2 (White), 2 steps" do
-        let(:args) { ["d2", 2] }
-        it "is d4" do
-          expect(square_ahead_custom).to eql("d4")
-        end
-      end
-      context "of g7 (Black), 2 steps" do
-        let(:args) { ["g7", 2] }
-        it "is g5" do
-          expect(square_ahead_custom).to eql("g5")
-        end
-      end
-      context "of d2 (White), -1 step" do
-        let(:args) { ["d2", -1] }
-        it "is d1" do
-          expect(square_ahead_custom).to eql("d1")
-        end
-      end
-      context "of g7 (Black), -1 step" do
-        let(:args) { ["g7", -1] }
-        it "is g8" do
-          expect(square_ahead_custom).to eql("g8")
-        end
-      end
-      context "of c7, 1 White step" do
-        let(:args) { ["c7", 1, White] }
-        it "is c8" do
-          expect(square_ahead_custom).to eql("c8")
-        end
-      end
-      context "of b5, 1 Black step" do
-        let(:args) { ["b5", 1, Black] }
-        it "is b4" do
-          expect(square_ahead_custom).to eql("b4")
-        end
-      end
-    end
-    context "when leading off board" do
-      let(:square_ahead_extreme) { board_square_ahead.square_ahead(*args) }
-      context "of c1 (White), -1 step" do
-        let(:args) { ["c1", -1] }
-        it "is nil" do
-          expect(square_ahead_extreme).to be_nil
-        end
-      end
-      context "of d1, -1 White step" do
-        let(:args) { ["d1", -1, White] }
-        let(:steps) { -1 }
-        let(:color) { White }
-        it "is nil" do
-          expect(square_ahead_extreme).to be_nil
-        end
-      end
-      context "of h2, 2 Black steps" do
-        let(:args) { ["h2", 2, Black] }
-        it "is nil" do
-          expect(square_ahead_extreme).to be_nil
-        end
-      end
-    end
-  end
 
   describe "#en_passant_capture_square" do
     subject(:board_ep_capture) { described_class.new }

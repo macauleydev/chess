@@ -1,4 +1,3 @@
-# require_relative "board"
 module Move
   def make_move(from_square, to_square)
     if real_board?
