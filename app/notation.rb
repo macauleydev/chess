@@ -33,41 +33,6 @@ module Notation
     game_notation.strip
   end
 
-  private
-
-  def save_game_and_exit
-    saved_game = to_s(highlight: false)
-    filename = "saved_game.pgn"
-    File.open(filename, "w") do |file|
-      file.puts saved_game
-    end
-    puts "Game saved."
-    exit
-  end
-
-  def load_game_and_play
-    filename = "saved_game.pgn"
-    pgn_game = File.read(filename)
-    move_strings = pgn_to_minimal_algebraic(pgn_game)
-    initialize
-    move_strings.each do |move_string|
-      from, to = movement(move_string)
-      perform_move(from, to)
-    end
-    play(skip_intro: true)
-  end
-
-  def pgn_to_minimal_algebraic(pgn_game)
-    words = pgn_game.split
-    moves = words.filter do |move| # strip move numbers & spaced e.p. indicator
-      patterns = [/(\d)+\./, /e\.p\./]
-      patterns.none? { |regex| move.match?(regex) }
-    end
-    moves.map do |move| # strip capture, check(mate), and unspaced e.p. indicators
-      move.gsub(/x|\+|\#|e\.p\./, "")
-    end
-  end
-
   def movement(move_string, board: @board)
     # Accepted formats: coordinates (b1c3) or minimal algebraic (Nc3)
     raise "Invalid input, #{move_string}: must be a string" unless move_string.is_a?(String)
@@ -135,5 +100,40 @@ module Notation
       return nil
     end
     [from_square, to_square] if from_square
+  end
+
+  def load_game_and_play
+    filename = "saved_game.pgn"
+    pgn_game = File.read(filename)
+    move_strings = pgn_to_minimal_algebraic(pgn_game)
+    initialize
+    move_strings.each do |move_string|
+      from, to = movement(move_string)
+      perform_move(from, to)
+    end
+    play(skip_intro: true)
+  end
+
+  private
+
+  def pgn_to_minimal_algebraic(pgn_game)
+    words = pgn_game.split
+    moves = words.filter do |move| # strip move numbers & spaced e.p. indicator
+      patterns = [/(\d)+\./, /e\.p\./]
+      patterns.none? { |regex| move.match?(regex) }
+    end
+    moves.map do |move| # strip capture, check(mate), and unspaced e.p. indicators
+      move.gsub(/x|\+|\#|e\.p\./, "")
+    end
+  end
+
+  def save_game_and_exit
+    saved_game = to_s(highlight: false)
+    filename = "saved_game.pgn"
+    File.open(filename, "w") do |file|
+      file.puts saved_game
+    end
+    puts "Game saved."
+    exit
   end
 end
