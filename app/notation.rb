@@ -1,7 +1,7 @@
-require_relative "geometry"
+require_relative "grid"
 
 module Notation
-  include Geometry
+  include Grid
   def to_s(highlight: true)
     game_notation = @board.moves.each_with_index.reduce("") do |game, (move, index)|
       if index.even?

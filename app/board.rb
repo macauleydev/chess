@@ -7,7 +7,7 @@ require_relative "player"
 require_relative "piece"
 
 # Modules:
-require_relative "geometry"
+require_relative "grid"
 require_relative "display"
 require_relative "explore"
 require_relative "plan"
@@ -15,7 +15,7 @@ require_relative "judge"
 require_relative "move"
 
 class Board
-  include Geometry
+  include Grid
   include Display
   include Explore
   include Plan

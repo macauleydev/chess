@@ -2,7 +2,7 @@ FILE_LETTERS = ("a".."h")
 RANK_NUMBERS = (1..8)
 RANK_NAMES = ("1".."8")
 
-module Geometry
+module Grid
   def square?(square) = !!(square.chars in [FILE_LETTERS, RANK_NAMES])
 
   def file_letter(square) = square[0]
