@@ -1,3 +1,5 @@
+require "paint"
+
 class Piece
   def initialize(color, board, squares_visited)
     @color = color
@@ -18,6 +20,10 @@ class Piece
 
   def clone
     self.class.new(color, board, squares_visited)
+  end
+
+  def to_s
+    Paint[symbol.ljust(2), @color_code]
   end
 
   attr_reader :color, :color_code, :board, :squares_visited, :name, :key, :symbol

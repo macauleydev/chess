@@ -30,9 +30,7 @@ module Display
       in [false, true] then square_background[:light_active]
       end
     piece = @contents[square]
-    fg = piece&.color_code
-    symbol = piece&.symbol
-    Paint["#{symbol || " "} ", fg, bg]
+    Paint[piece || "  ", nil, bg]
   end
 
   def rank_to_s(rank_number, active_squares: nil, labels_hidden: false)
