@@ -13,9 +13,8 @@ module Explore
 
   def kings_square(color)
     king_squares = squares_of(color:, type: King)
-    king_squares.count == 1 or raise "Interregnum! This \
-        #{real_board? ? "real" : "imaginary"} board has \
-        #{matching_squares.count} #{color.name} kings!\n#{@contents}"
+    king_squares.count == 1 or
+      raise "Interregnum! This #{real_board? ? "real" : "imaginary"} board has #{king_squares.count} #{color.name} kings!\n#{@contents}"
     king_squares.first
   end
 

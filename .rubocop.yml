@@ -1,0 +1,18 @@
+# Based on https://www.fastruby.io/blog/ruby/code-quality/how-we-use-rubocop-and-standardrb.html
+
+require:
+  - standard
+  # - standard-custom
+  # - standard-performance
+  # - rubocop-performance
+  - rubocop-rspec
+
+inherit_gem:
+  standard: config/base.yml
+  # standard-custom: config/base.yml
+  # standard-performance: config/base.yml
+
+RSpec:
+  Enabled: true # enable rubocop-rspec cops
+RSpec/DescribeClass:
+  Enabled: false # ignore missing comments on classes
