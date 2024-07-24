@@ -1,8 +1,7 @@
 # chess
 A chess game in Ruby, designed and built from scratch (no tutorials).
 
-![screenshot01](https://github.com/user-attachments/assets/b5b50f8d-af58-4cdb-8344-03d5187d9396)
-
+![screenshot02](https://github.com/user-attachments/assets/bd973f5e-cf57-40fd-91cc-0870e8c6c33f)
 
 Challenge undertaken as [Ruby Final Project](https://www.theodinproject.com/lessons/ruby-ruby-final-project) in The Odin Project's [Ruby Course](https://www.theodinproject.com/paths/full-stack-ruby-on-rails/courses/ruby).
 
