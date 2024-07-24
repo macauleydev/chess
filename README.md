@@ -31,3 +31,10 @@ Challenge undertaken as [Ruby Final Project](https://www.theodinproject.com/less
 - [ ] Enable options to flip board (on-demand or per-turn)
 - [ ] Deploy demo using online terminal (e.g. OnlineGDB, Replit)
 - [ ] Deploy demo using a GUI (e.g. Chessboard.js)
+### Testing:
+- [x] Improve method modularity and ordering
+- [x] Distinguish public/private
+- [x] Clarify what to test
+- [x] Start making tests
+- [ ] Continue adding tests over time
+  - [ ] Add random tests using imported PGN files from actual games
