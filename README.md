@@ -27,7 +27,7 @@ Challenge undertaken as [Ruby Final Project](https://www.theodinproject.com/less
 - [x] Moves animated (path highlighted)
 - [x] Move history shown above board in minimal algebraic notation
 - [x] Description and feature list in README
-- [ ] Screenshots in README
+- [x] Screenshots in README
 - [ ] Place move history right of board, in columns
 - [ ] Show captured pieces
 - [ ] Enable options to flip board (on-demand or per-turn)
